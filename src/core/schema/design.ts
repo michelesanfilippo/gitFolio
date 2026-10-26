@@ -47,12 +47,21 @@ export interface StyleSettings {
   skillStyle: 'list' | 'tags' | 'bars' | 'inline';
 }
 
+export interface PhotoSettings {
+  /** Posizione rispetto al nome: la foto è sempre ancorata al blocco nome, si sposta con esso. */
+  position: 'left' | 'right' | 'top';
+  shape: 'circle' | 'rounded' | 'square';
+  size: number; // pt
+  ring: boolean; // bordo nel colore primario
+}
+
 export interface DesignSettings {
   colors: PaletteColors;
   paletteId: string;
   typography: Typography;
   page: PageSettings;
   style: StyleSettings;
+  photo: PhotoSettings;
 }
 
 export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignSettings => ({
@@ -68,5 +77,6 @@ export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignS
     margins: { top: 40, right: 40, bottom: 40, left: 40 },
     sectionGap: 14, itemGap: 8, columns: 1, columnRatio: 32, sidebarSide: 'left', dateStyle: 'right',
   },
+  photo: { position: 'left', shape: 'circle', size: 84, ring: false },
   style: { titleStyle: 'underline', divider: 'thin', bullet: 'dot', headerAlign: 'left', sidebarFill: false, skillStyle: 'tags' },
 });

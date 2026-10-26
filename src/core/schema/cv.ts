@@ -7,6 +7,8 @@ export interface DateRange { start?: string; end?: string; current?: boolean } /
 
 export interface Personal {
   fullName: string;
+  /** Data URL JPEG già ritagliata/ridimensionata (elaborata nel browser, mai inviata altrove). */
+  photo?: string;
   headline?: string;
   email?: string;
   phone?: string;

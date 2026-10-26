@@ -1,4 +1,4 @@
-import { Document, Link, Page, Text, View } from '@react-pdf/renderer';
+import { Document, Image, Link, Page, Text, View } from '@react-pdf/renderer';
 import type { Styles } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
@@ -236,21 +236,64 @@ function ContactLines({ ctx, stacked }: { ctx: Ctx; stacked: boolean }) {
   for (const l of p.links) lines.push(<Link key={l.id} src={l.url} style={{ color: colors.primary }}>{l.label ?? l.url}</Link>);
   if (stacked) return <>{lines.map((n, i) => <Text key={i} style={{ ...ctx.body, marginBottom: 2 }}>{n}</Text>)}</>;
   return (
-    <Text style={{ ...ctx.small, color: colors.text }}>
+    <Text style={{ ...ctx.small, color: colors.text, textAlign: ctx.d.style.headerAlign }}>
       {lines.flatMap((n, i) => (i ? [<Text key={`s${i}`} style={{ color: colors.secondary }}>{'   |   '}</Text>, n] : [n]))}
     </Text>
   );
 }
 
+function Photo({ ctx }: { ctx: Ctx }) {
+  const src = ctx.doc.personal.photo;
+  if (!src) return null;
+  const { size, shape, ring } = ctx.d.photo;
+  const radius = shape === 'circle' ? size / 2 : shape === 'rounded' ? size * 0.14 : 0;
+  return (
+    <Image
+      src={src}
+      style={{
+        width: size, height: size, objectFit: 'cover', borderRadius: radius,
+        ...(ring ? { borderWidth: 2, borderColor: ctx.d.colors.primary } : {}),
+      }}
+    />
+  );
+}
+
+/**
+ * Blocco intestazione: foto + nome formano UN solo gruppo. `headerAlign` posiziona il gruppo intero
+ * (sinistra/centro/destra), quindi spostare il nome sposta anche la foto; `photo.position` ne decide
+ * il lato rispetto al nome.
+ */
 function Header({ ctx, withContacts }: { ctx: Ctx; withContacts: boolean }) {
   const { personal } = ctx.doc;
-  const { typography: ty, colors, style } = ctx.d;
+  const { typography: ty, colors, style, photo } = ctx.d;
   const align = style.headerAlign;
+  const edge = align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end';
+  const hasPhoto = Boolean(personal.photo);
+  const stacked = hasPhoto && photo.position === 'top';
+  const photoFirst = hasPhoto && photo.position === 'left';
+  // Testo accanto alla foto: allineato al lato vicino alla foto; sopra/senza foto segue headerAlign.
+  const textAlign = hasPhoto && !stacked ? (photoFirst ? 'left' : 'right') : align;
+  const textEdge = textAlign === 'left' ? 'flex-start' : textAlign === 'center' ? 'center' : 'flex-end';
+
+  const text = (
+    <View style={{ alignItems: textEdge, flexShrink: 1 }}>
+      <Text style={{ fontFamily: ty.headingFont, fontWeight: ty.headingWeight, fontSize: ty.nameSize, color: colors.primary, lineHeight: 1.1, textAlign }}>{personal.fullName}</Text>
+      {personal.headline ? <Text style={{ ...ctx.body, fontSize: ty.bodySize * 1.25, color: colors.secondary, marginTop: 3, textAlign }}>{personal.headline}</Text> : null}
+    </View>
+  );
+  const photoBox = hasPhoto ? (
+    <View style={stacked ? { marginBottom: 8 } : photoFirst ? { marginRight: 14 } : { marginLeft: 14 }}><Photo ctx={ctx} /></View>
+  ) : null;
+
   return (
-    <View style={{ marginBottom: ctx.d.page.sectionGap, alignItems: align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end' }}>
-      <Text style={{ fontFamily: ty.headingFont, fontWeight: ty.headingWeight, fontSize: ty.nameSize, color: colors.primary, lineHeight: 1.1, textAlign: align }}>{personal.fullName}</Text>
-      {personal.headline ? <Text style={{ ...ctx.body, fontSize: ty.bodySize * 1.25, color: colors.secondary, marginTop: 3, textAlign: align }}>{personal.headline}</Text> : null}
-      {withContacts ? <View style={{ marginTop: 6 }}><ContactLines ctx={ctx} stacked={false} /></View> : null}
+    <View wrap={false} style={{ marginBottom: ctx.d.page.sectionGap, width: '100%' }}>
+      {/* gruppo foto+nome: unico blocco, posizionato da headerAlign (sposta insieme foto e nome) */}
+      <View style={{ width: '100%', flexDirection: stacked ? 'column' : 'row', justifyContent: stacked ? 'flex-start' : edge, alignItems: stacked ? edge : 'center' }}>
+        {photoFirst || stacked ? photoBox : null}
+        {text}
+        {hasPhoto && !photoFirst && !stacked ? photoBox : null}
+      </View>
+      {withContacts ? <View style={{ marginTop: 8, width: '100%', alignItems: edge }}><ContactLines ctx={ctx} stacked={false} /></View> : null}
     </View>
   );
 }

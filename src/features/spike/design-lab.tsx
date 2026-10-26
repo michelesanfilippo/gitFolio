@@ -12,6 +12,7 @@ import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import type { RichText } from '@/core/richtext/ast';
 import { RichTextEditor } from '@/features/richtext/rich-text-editor';
+import { PhotoField } from '@/features/photo/photo-field';
 import { PdfPreview } from './pdf-preview';
 
 // Laboratorio di Fase 0: valida motore PDF + opzioni di design. Sarà sostituito dall'editor (Fase 1) e tradotto allora.
@@ -44,10 +45,11 @@ export function DesignLab() {
   const renderer = useRef<PdfRenderer>(undefined);
 
   const [profile, setProfile] = useState<RichText>();
+  const [photo, setPhoto] = useState<string>();
   const doc = useMemo(() => {
     const base = longDoc(sampleCv(locale), copies);
-    return profile ? { ...base, profile } : base;
-  }, [locale, copies, profile]);
+    return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
+  }, [locale, copies, profile, photo]);
 
   useEffect(() => {
     renderer.current = createPdfRenderer();
@@ -117,6 +119,15 @@ export function DesignLab() {
             { value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' },
           ]} />
           <Select label="Sample length" value={copies} onChange={setCopies} options={[{ value: 1, label: 'Short' }, { value: 3, label: 'Medium' }, { value: 8, label: 'Very long' }]} />
+        </Group>
+
+        <Group title="Photo" open>
+          <PhotoField photo={photo} onChange={setPhoto} />
+          <Segmented label="Position (next to name)" value={design.photo.position} onChange={(v) => set('photo', { position: v })} options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'top', label: 'Above' }]} wide />
+          <Segmented label="Shape" value={design.photo.shape} onChange={(v) => set('photo', { shape: v })} options={[{ value: 'circle', label: 'Circle' }, { value: 'rounded', label: 'Rounded' }, { value: 'square', label: 'Square' }]} wide />
+          <Range label="Size" value={design.photo.size} min={48} max={150} unit="pt" onChange={(v) => set('photo', { size: v })} />
+          <Toggle label="Border" checked={design.photo.ring} onChange={(v) => set('photo', { ring: v })} />
+          <p className="col-span-2 text-xs text-muted">The photo stays attached to the name: header alignment (Details &gt; Header alignment) moves both.</p>
         </Group>
 
         <Group title="Profile text (rich editor)">
