@@ -26,6 +26,10 @@ export interface Typography {
   uppercaseHeadings: boolean;
 }
 
+export type SectionId = 'contacts' | 'profile' | 'experience' | 'education' | 'projects' | 'skills' | 'languages' | 'certifications';
+/** Ordine canonico delle sezioni all'interno di ciascuna colonna. */
+export const SECTION_ORDER: SectionId[] = ['contacts', 'profile', 'experience', 'education', 'projects', 'skills', 'languages', 'certifications'];
+
 export interface PageSettings {
   size: 'A4' | 'LETTER';
   orientation: 'portrait' | 'landscape';
@@ -35,6 +39,11 @@ export interface PageSettings {
   columns: 1 | 2;
   columnRatio: number; // % larghezza sidebar
   sidebarSide: 'left' | 'right';
+  /** Sezioni mostrate nella colonna laterale (le altre restano nella colonna principale). */
+  sidebarSections: SectionId[];
+  /** Altezza dello sfondo della colonna laterale: pagina intera, quanto il contenuto, oppure % della pagina (solo prima pagina). */
+  sidebarHeight: 'full' | 'content' | 'custom';
+  sidebarHeightPct: number;
   dateStyle: 'right' | 'inline' | 'below';
 }
 
@@ -54,7 +63,10 @@ export interface PhotoSettings {
   position: 'left' | 'right' | 'top';
   shape: PhotoShape;
   size: number; // pt (altezza)
-  ring: boolean; // bordo nel colore primario
+  /** Spessore del bordo in pt (0 = nessun bordo). Fa parte della dimensione totale `size`. */
+  borderWidth: number;
+  /** Colore del bordo; vuoto = colore principale della palette. */
+  borderColor: string;
 }
 
 export interface DesignSettings {
@@ -78,7 +90,8 @@ export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignS
     size: 'A4', orientation: 'portrait',
     margins: { top: 40, right: 40, bottom: 40, left: 40 },
     sectionGap: 14, itemGap: 8, columns: 1, columnRatio: 32, sidebarSide: 'left', dateStyle: 'right',
+    sidebarSections: ['contacts', 'skills', 'languages', 'certifications'], sidebarHeight: 'full', sidebarHeightPct: 60,
   },
-  photo: { position: 'left', shape: 'circle', size: 84, ring: false },
+  photo: { position: 'left', shape: 'circle', size: 84, borderWidth: 0, borderColor: '' },
   style: { titleStyle: 'underline', divider: 'thin', bullet: 'dot', headerAlign: 'left', sidebarFill: false, skillStyle: 'tags' },
 });

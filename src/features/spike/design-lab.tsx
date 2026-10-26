@@ -3,7 +3,7 @@
 import { Download, FileText, LayoutTemplate, Palette, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
-import type { CvDocument, Locale } from '@/core/schema/cv';
+import type { Locale } from '@/core/schema/cv';
 import { sampleCv } from '@/core/schema/sample';
 import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
 import type { RichText } from '@/core/richtext/ast';
@@ -26,16 +26,10 @@ const TABS: Array<{ id: TabId; label: string; Icon: LucideIcon }> = [
 
 const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
 
-const longDoc = (doc: CvDocument, copies: number): CvDocument => ({
-  ...doc,
-  experience: Array.from({ length: copies }, (_, c) => doc.experience.map((e) => ({ ...e, id: `${e.id}-${c}` }))).flat(),
-});
-
 export function DesignLab() {
   const [design, setDesign] = useState<DesignSettings>(initialDesign);
   const [tab, setTab] = useState<TabId>('content');
   const [locale, setLocale] = useState<Locale>('en');
-  const [copies, setCopies] = useState(1);
   const [profile, setProfile] = useState<RichText>();
   const [photo, setPhoto] = useState<string>();
   const [zoom, setZoom] = useState(1);
@@ -47,9 +41,9 @@ export function DesignLab() {
   const renderer = useRef<PdfRenderer>(undefined);
 
   const doc = useMemo(() => {
-    const base = longDoc(sampleCv(locale), copies);
+    const base = sampleCv(locale);
     return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
-  }, [locale, copies, profile, photo]);
+  }, [locale, profile, photo]);
 
   useEffect(() => {
     renderer.current = createPdfRenderer();
@@ -127,7 +121,7 @@ export function DesignLab() {
 
         <div className="min-h-0 flex-1 overflow-y-auto pt-4">
           <PanelBody id="content" active={tab === 'content'}>
-            <ContentPanel locale={locale} setLocale={setLocale} copies={copies} setCopies={setCopies} setProfile={setProfile} showText={showText} setShowText={setShowText} text={text} />
+            <ContentPanel locale={locale} setLocale={setLocale} setProfile={setProfile} showText={showText} setShowText={setShowText} text={text} />
           </PanelBody>
           <PanelBody id="photo" active={tab === 'photo'}><PhotoPanel design={design} set={set} photo={photo} setPhoto={setPhoto} /></PanelBody>
           <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} /></PanelBody>

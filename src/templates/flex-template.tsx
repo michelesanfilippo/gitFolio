@@ -1,9 +1,10 @@
 import { Document, Image, Link, Page, Text, View } from '@react-pdf/renderer';
+import { Fragment } from 'react';
 import type { Styles } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
 import type { CvDocument, DateRange } from '@/core/schema/cv';
-import type { DesignSettings } from '@/core/schema/design';
+import { SECTION_ORDER, type DesignSettings, type SectionId } from '@/core/schema/design';
 import { shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, readableOn } from '@/core/theme/contrast';
 import { formatMonth, labels, type Labels } from './labels';
@@ -246,17 +247,32 @@ function ContactLines({ ctx, stacked }: { ctx: Ctx; stacked: boolean }) {
 function Photo({ ctx }: { ctx: Ctx }) {
   const src = ctx.doc.personal.photo;
   if (!src) return null;
-  const { size, shape, ring } = ctx.d.photo;
-  const { width, height, radii } = shapeBox(shape, size);
-  return (
+  const { size, shape, borderWidth, borderColor } = ctx.d.photo;
+  const bw = Math.max(0, borderWidth);
+  // `size` è l'ingombro totale: il bordo sta dentro (la foto si restringe). Il bordo è un contenitore colorato
+  // con padding (non border-width sull'immagine, che react-pdf non disegna in modo affidabile).
+  const outer = shapeBox(shape, size);
+  const inner = shapeBox(shape, size - 2 * bw);
+  const image = (
     <Image
       src={src}
       style={{
-        width, height, objectFit: 'cover',
-        borderTopLeftRadius: radii[0], borderTopRightRadius: radii[1], borderBottomRightRadius: radii[2], borderBottomLeftRadius: radii[3],
-        ...(ring ? { borderWidth: 2, borderColor: ctx.d.colors.primary } : {}),
+        width: inner.width, height: inner.height, objectFit: 'cover',
+        borderTopLeftRadius: inner.radii[0], borderTopRightRadius: inner.radii[1], borderBottomRightRadius: inner.radii[2], borderBottomLeftRadius: inner.radii[3],
       }}
     />
+  );
+  if (!bw) return image;
+  return (
+    <View
+      style={{
+        width: outer.width, height: outer.height, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: borderColor || ctx.d.colors.primary,
+        borderTopLeftRadius: outer.radii[0], borderTopRightRadius: outer.radii[1], borderBottomRightRadius: outer.radii[2], borderBottomLeftRadius: outer.radii[3],
+      }}
+    >
+      {image}
+    </View>
   );
 }
 
@@ -302,31 +318,30 @@ function Header({ ctx, withContacts }: { ctx: Ctx; withContacts: boolean }) {
 
 function sections(ctx: Ctx) {
   const { doc, L } = ctx;
-  const main: ReactNode[] = [];
-  const side: ReactNode[] = [];
-  if (doc.profile?.length) main.push(<Section key="profile" title={L.profile} ctx={ctx}><Rich blocks={doc.profile} ctx={ctx} /></Section>);
-  if (doc.experience.length) main.push(
-    <Section key="exp" title={L.experience} ctx={ctx}>
+  const out: Partial<Record<SectionId, ReactNode>> = {};
+  if (doc.profile?.length) out.profile = <Section title={L.profile} ctx={ctx}><Rich blocks={doc.profile} ctx={ctx} /></Section>;
+  if (doc.experience.length) out.experience = (
+    <Section title={L.experience} ctx={ctx}>
       <Items items={doc.experience} ctx={ctx} render={(e) => (
         <>
           <EntryHeader title={e.role} sub={[e.company, e.location].filter(Boolean).join(' · ')} range={e.dates} ctx={ctx} />
           <Rich blocks={e.description} ctx={ctx} />
         </>
       )} />
-    </Section>,
+    </Section>
   );
-  if (doc.education.length) main.push(
-    <Section key="edu" title={L.education} ctx={ctx}>
+  if (doc.education.length) out.education = (
+    <Section title={L.education} ctx={ctx}>
       <Items items={doc.education} ctx={ctx} render={(e) => (
         <>
           <EntryHeader title={e.degree} sub={[e.school, e.location].filter(Boolean).join(' · ')} range={e.dates} ctx={ctx} />
           <Rich blocks={e.description} ctx={ctx} />
         </>
       )} />
-    </Section>,
+    </Section>
   );
-  if (doc.projects.length) main.push(
-    <Section key="prj" title={L.projects} ctx={ctx}>
+  if (doc.projects.length) out.projects = (
+    <Section title={L.projects} ctx={ctx}>
       <Items items={doc.projects} ctx={ctx} render={(pr) => (
         <View wrap={false}>
           <Text style={{ ...ctx.body, fontWeight: 700, color: ctx.d.colors.heading }}>
@@ -337,12 +352,12 @@ function sections(ctx: Ctx) {
           {pr.tech?.length ? <Text style={{ ...ctx.small, color: ctx.d.colors.secondary }}>{pr.tech.join(' · ')}</Text> : null}
         </View>
       )} />
-    </Section>,
+    </Section>
   );
-  if (doc.skills.length) side.push(<Section key="sk" title={L.skills} ctx={ctx}><Skills ctx={ctx} /></Section>);
-  if (doc.languages.length) side.push(<Section key="lg" title={L.languages} ctx={ctx}><LanguagesBlock ctx={ctx} /></Section>);
-  if (doc.certifications.length) side.push(
-    <Section key="ce" title={L.certifications} ctx={ctx}>
+  if (doc.skills.length) out.skills = <Section title={L.skills} ctx={ctx}><Skills ctx={ctx} /></Section>;
+  if (doc.languages.length) out.languages = <Section title={L.languages} ctx={ctx}><LanguagesBlock ctx={ctx} /></Section>;
+  if (doc.certifications.length) out.certifications = (
+    <Section title={L.certifications} ctx={ctx}>
       <Items items={doc.certifications} ctx={ctx} render={(c) => (
         <View wrap={false}>
           <Text style={{ ...ctx.body, fontWeight: 700 }}>{c.name}</Text>
@@ -350,9 +365,9 @@ function sections(ctx: Ctx) {
           {c.url ? <Link src={c.url} style={{ ...ctx.small, color: ctx.d.colors.primary }}>{L.verify}</Link> : null}
         </View>
       )} />
-    </Section>,
+    </Section>
   );
-  return { main, side };
+  return out;
 }
 
 export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignSettings }) {
@@ -364,29 +379,46 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
     body: { ...base, fontSize: ty.bodySize, lineHeight: ty.lineHeight, color: colors.text, textAlign: ty.align },
     small: { ...base, fontSize: ty.bodySize * 0.9, lineHeight: ty.lineHeight, color: colors.text },
   };
-  const { main, side } = sections(ctx);
+  const built = sections(ctx);
 
   const [w0, h0] = PAGE_SIZES[page.size];
-  const pageW = page.orientation === 'portrait' ? w0 : h0;
+  const portrait = page.orientation === 'portrait';
+  const pageW = portrait ? w0 : h0;
+  const pageH = portrait ? h0 : w0;
   const { top, right, bottom, left } = page.margins;
   const inner = pageW - left - right;
+  const sideLeft = page.sidebarSide === 'left';
+
+  // Assegnazione sezioni -> colonna. Con 1 colonna (o colonna laterale vuota) tutto fluisce in un'unica colonna.
+  const sideIds = new Set(page.sidebarSections);
+  const twoCol = page.columns === 2 && sideIds.size > 0;
+  const contactsInSide = twoCol && sideIds.has('contacts');
+  const pick = (inSide: boolean) =>
+    SECTION_ORDER.filter((id) => id !== 'contacts' && (twoCol ? sideIds.has(id) === inSide : !inSide) && built[id])
+      .map((id) => <Fragment key={id}>{built[id]}</Fragment>);
+  const main = pick(false);
+  const side = pick(true);
+
   const sideW = (inner - COLUMN_GAP) * (page.columnRatio / 100);
   const mainW = inner - COLUMN_GAP - sideW;
-  const sideLeft = page.sidebarSide === 'left';
-  const twoCol = page.columns === 2;
+  const fill = design.style.sidebarFill;
+  const heightMode = page.sidebarHeight;
+  const card = fill && heightMode === 'content'; // riquadro alto quanto il contenuto
 
   const sidebar = (
-    <View style={{ width: sideW }}>
-      <Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section>
+    <View style={{ width: sideW, ...(card ? { backgroundColor: colors.badge, borderRadius: 6, padding: 10, alignSelf: 'flex-start' } : {}) }}>
+      {contactsInSide ? <Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section> : null}
       {side}
     </View>
   );
   const mainCol = (
     <View style={{ width: mainW }}>
-      <Header ctx={ctx} withContacts={false} />
+      <Header ctx={ctx} withContacts={!contactsInSide} />
       {main}
     </View>
   );
+  const bgWidth = sideW + (sideLeft ? left : right) + COLUMN_GAP / 2;
+  const bgBase: Style = { position: 'absolute', top: 0, ...(sideLeft ? { left: 0 } : { right: 0 }), width: bgWidth, backgroundColor: colors.badge };
 
   return (
     <Document title={`${doc.personal.fullName} — CV`} author={doc.personal.fullName} language={doc.locale}>
@@ -398,9 +430,8 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
       >
         {twoCol ? (
           <>
-            {design.style.sidebarFill ? (
-              <View fixed style={{ position: 'absolute', top: 0, bottom: 0, [sideLeft ? 'left' : 'right']: 0, width: sideW + (sideLeft ? left : right) + COLUMN_GAP / 2, backgroundColor: colors.badge }} />
-            ) : null}
+            {fill && heightMode === 'full' ? <View fixed style={{ ...bgBase, bottom: 0 }} /> : null}
+            {fill && heightMode === 'custom' ? <View style={{ ...bgBase, height: (pageH * page.sidebarHeightPct) / 100 }} /> : null}
             <View style={{ flexDirection: sideLeft ? 'row' : 'row-reverse', justifyContent: 'space-between' }}>
               {sidebar}
               {mainCol}
@@ -410,7 +441,6 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
           <>
             <Header ctx={ctx} withContacts />
             {main}
-            {side}
           </>
         )}
       </Page>

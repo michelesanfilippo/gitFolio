@@ -6,7 +6,7 @@ import { FontPicker } from '@/components/ui/font-picker';
 import { availableWeights } from '@/config/fonts';
 import { palettes } from '@/config/palettes';
 import type { Locale } from '@/core/schema/cv';
-import type { DesignSettings, PaletteColors, Typography } from '@/core/schema/design';
+import { SECTION_ORDER, type DesignSettings, type PaletteColors, type SectionId, type Typography } from '@/core/schema/design';
 import { PHOTO_SHAPE_IDS, PHOTO_SHAPES, shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, isValidHex } from '@/core/theme/contrast';
 import { PhotoField } from '@/features/photo/photo-field';
@@ -48,10 +48,46 @@ const SkillPreview = ({ kind }: { kind: DesignSettings['style']['skillStyle'] })
   return <span className="text-[9px] leading-none text-fg">ipsum · dolor</span>;
 };
 
+const SECTION_LABELS: Record<SectionId, string> = {
+  contacts: 'Contacts', profile: 'Profile', experience: 'Experience', education: 'Education',
+  projects: 'Projects', skills: 'Skills', languages: 'Languages', certifications: 'Certifications',
+};
+
+/** Per ogni sezione: colonna principale o laterale. */
+function AssignList({ value, onChange }: { value: SectionId[]; onChange: (v: SectionId[]) => void }) {
+  const side = new Set(value);
+  const put = (id: SectionId, toSide: boolean) => {
+    const next = new Set(side);
+    if (toSide) next.add(id); else next.delete(id);
+    onChange(SECTION_ORDER.filter((x) => next.has(x)));
+  };
+  return (
+    <fieldset className="col-span-2">
+      <legend className="mb-1.5 text-xs text-muted">What goes in the side column</legend>
+      <ul className="divide-y divide-border rounded-lg border border-border">
+        {SECTION_ORDER.map((id) => (
+          <li key={id} role="group" aria-label={SECTION_LABELS[id]} className="flex items-center justify-between gap-2 px-3 py-1.5">
+            <span className="text-sm text-fg">{SECTION_LABELS[id]}</span>
+            <span className="flex overflow-hidden rounded-md border border-border">
+              {[{ side: false, label: 'Main' }, { side: true, label: 'Side' }].map((o) => (
+                <button key={o.label} type="button" aria-pressed={side.has(id) === o.side} onClick={() => put(id, o.side)}
+                  className={`px-3 py-1 text-xs ${side.has(id) === o.side ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border'}`}>
+                  {o.label}
+                </button>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {value.length === 0 ? <p className="mt-1.5 text-xs text-amber-300">Nothing selected: the CV stays on a single column.</p> : null}
+    </fieldset>
+  );
+}
+
 /* ---------------------------------- pannelli --------------------------------- */
 
 export function ContentPanel(props: {
-  locale: Locale; setLocale: (l: Locale) => void; copies: number; setCopies: (n: number) => void;
+  locale: Locale; setLocale: (l: Locale) => void;
   setProfile: (p: RichText) => void; showText: boolean; setShowText: (v: boolean) => void; text?: string[];
 }) {
   return (
@@ -59,8 +95,6 @@ export function ContentPanel(props: {
       <Section title="Sample content" hint="Placeholder text (lorem ipsum) to try the design. In the real editor this is where your CV data goes.">
         <Select wide label="Language of section titles (Experience, Education…)" value={props.locale} onChange={props.setLocale}
           options={[{ value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' }]} />
-        <Segmented label="Amount of content" value={props.copies} onChange={props.setCopies}
-          options={[{ value: 1, label: 'Compact' }, { value: 3, label: 'Longer' }, { value: 8, label: 'Stress test' }]} />
       </Section>
       <Section title="Profile text" hint="Format with bold, italic, lists and links. Pasting from Word or Google Docs is cleaned automatically.">
         <div className="col-span-2"><RichTextEditor label="Profile" onChange={props.setProfile} initialHtml={LOREM_PROFILE_HTML} /></div>
@@ -87,7 +121,15 @@ export function PhotoPanel({ design, set, photo, setPhoto }: DesignProps & { pho
         <Choice label="Frame" cols={4} value={design.photo.shape} onChange={(v) => set('photo', { shape: v })}
           options={PHOTO_SHAPE_IDS.map((id) => ({ value: id, label: PHOTO_SHAPES[id].label, preview: <ShapePreview id={id} /> }))} />
         <Range wide label="Size" value={design.photo.size} min={48} max={150} unit=" pt" onChange={(v) => set('photo', { size: v })} />
-        <Toggle label="Add a border" checked={design.photo.ring} onChange={(v) => set('photo', { ring: v })} />
+        <Range wide label="Border thickness (0 = no border)" value={design.photo.borderWidth} min={0} max={10} step={0.5} unit=" pt" onChange={(v) => set('photo', { borderWidth: v })} />
+        {design.photo.borderWidth > 0 ? (
+          <>
+            <ColorField label="Border color" value={design.photo.borderColor || design.colors.primary} onChange={(v) => set('photo', { borderColor: v.toUpperCase() })} />
+            {design.photo.borderColor ? (
+              <button type="button" onClick={() => set('photo', { borderColor: '' })} className="self-end rounded-md border border-border px-3 py-2 text-xs text-muted hover:bg-border hover:text-fg">Use palette color</button>
+            ) : null}
+          </>
+        ) : null}
       </Section>
       <Section title="Position" hint="The photo always stays attached to your name: if the name moves, the photo moves with it.">
         <Segmented label="Photo placement" value={design.photo.position} onChange={(v) => set('photo', { position: v })}
@@ -117,13 +159,24 @@ export function LayoutPanel({ design, set }: DesignProps) {
         )}
         <Toggle label="Set each margin separately" checked={perSide} onChange={setPerSide} />
       </Section>
-      <Section title="Columns" hint="Two columns put contacts and skills in a side column.">
+      <Section title="Columns" hint="Two columns add a side column. Choose what goes in it, how wide and how tall it is.">
         <Segmented label="Number of columns" value={design.page.columns} onChange={(v) => set('page', { columns: v })} options={[{ value: 1, label: 'One' }, { value: 2, label: 'Two' }]} />
         {design.page.columns === 2 ? (
           <>
-            <Segmented label="Side column" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'On the left' }, { value: 'right', label: 'On the right' }]} />
+            <Segmented label="Side column position" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'On the left' }, { value: 'right', label: 'On the right' }]} />
             <Range wide label="Side column width" value={design.page.columnRatio} min={22} max={45} unit="%" onChange={(v) => set('page', { columnRatio: v })} />
+            <AssignList value={design.page.sidebarSections} onChange={(v) => set('page', { sidebarSections: v })} />
             <Toggle label="Colored background for the side column" checked={design.style.sidebarFill} onChange={(v) => set('style', { sidebarFill: v })} />
+            {design.style.sidebarFill ? (
+              <>
+                <Segmented label="Side column height" value={design.page.sidebarHeight} onChange={(v) => set('page', { sidebarHeight: v })}
+                  options={[{ value: 'full', label: 'Full page' }, { value: 'content', label: 'Fit content' }, { value: 'custom', label: 'Custom' }]} />
+                {design.page.sidebarHeight === 'custom' ? (
+                  <Range wide label="Height (% of the first page)" value={design.page.sidebarHeightPct} min={20} max={100} step={5} unit="%" onChange={(v) => set('page', { sidebarHeightPct: v })} />
+                ) : null}
+                <Hint>{{ full: 'The colored background runs edge to edge on every page.', content: 'A card exactly as tall as its content.', custom: 'The background covers only the top of the first page.' }[design.page.sidebarHeight]}</Hint>
+              </>
+            ) : null}
           </>
         ) : null}
       </Section>
