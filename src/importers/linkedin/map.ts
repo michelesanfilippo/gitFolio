@@ -34,7 +34,13 @@ export interface LinkedInImport {
 
 export type ImportSection = 'personal' | 'profile' | 'experience' | 'education' | 'certifications' | 'skills' | 'languages' | 'projects';
 
-const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+// Prefissi dei mesi nelle lingue dei profili LinkedIn più comuni (en, it, es, de, fr): il più lungo che combacia vince.
+const MONTH_PREFIX: Array<[string, number]> = ([
+  ['jan', 1], ['gen', 1], ['ene', 1], ['janv', 1], ['feb', 2], ['fév', 2], ['fev', 2], ['mar', 3], ['mär', 3], ['apr', 4], ['abr', 4], ['avr', 4],
+  ['may', 5], ['mag', 5], ['mai', 5], ['jun', 6], ['giu', 6], ['juin', 6], ['jul', 7], ['lug', 7], ['juil', 7], ['aug', 8], ['ago', 8], ['aoû', 8], ['aou', 8],
+  ['sep', 9], ['set', 9], ['oct', 10], ['ott', 10], ['okt', 10], ['nov', 11], ['dec', 12], ['dic', 12], ['dez', 12], ['déc', 12],
+] as Array<[string, number]>).sort((a, b) => b[0].length - a[0].length);
+const monthOf = (word: string) => MONTH_PREFIX.find(([p]) => word.startsWith(p))?.[1];
 
 /** "Jan 2020" / "January 2020" / "Jan 5, 2020" / "2020-01" / "01/2020" / "2020" → "YYYY-MM". Solo anno: mese `fallback`. */
 export function linkedInMonth(v: string | undefined, fallback: '01' | '12', flag?: { approx: boolean }): string | undefined {
@@ -44,9 +50,9 @@ export function linkedInMonth(v: string | undefined, fallback: '01' | '12', flag
   if (m) return `${m[1]}-${m[2]!.padStart(2, '0')}`;
   m = /^(\d{1,2})\/(?:\d{1,2}\/)?(\d{4})$/.exec(s);
   if (m) return `${m[2]}-${m[1]!.padStart(2, '0')}`;
-  m = /([a-z]{3})[a-z]*\.?\s+(?:\d{1,2},?\s+)?(\d{4})/.exec(s);
-  const mi = m ? MONTHS.indexOf(m[1]!) : -1;
-  if (m && mi >= 0) return `${m[2]}-${String(mi + 1).padStart(2, '0')}`;
+  m = /(\p{L}{3,})\.?\s+(?:\d{1,2},?\s+)?(\d{4})/u.exec(s);
+  const mi = m ? monthOf(m[1]!) : undefined;
+  if (m && mi) return `${m[2]}-${String(mi).padStart(2, '0')}`;
   m = /(\d{4})/.exec(s);
   if (m) { if (flag) flag.approx = true; return `${m[1]}-${fallback}`; }
   return undefined;
@@ -69,7 +75,7 @@ export function textToRich(text: string | undefined): RichText | undefined {
   return out.length ? out : undefined;
 }
 
-const range = (start: string | undefined, end: string | undefined, flag: { approx: boolean }, openIsCurrent: boolean): DateRange => {
+export const range = (start: string | undefined, end: string | undefined, flag: { approx: boolean }, openIsCurrent: boolean): DateRange => {
   const r: DateRange = {};
   const s = linkedInMonth(start, '01', flag), e = linkedInMonth(end, '12', flag);
   if (s) r.start = s;
@@ -78,15 +84,16 @@ const range = (start: string | undefined, end: string | undefined, flag: { appro
   return r;
 };
 
-const LANGUAGE_LEVELS: Array<[RegExp, string, number]> = [
-  [/native|bilingual/i, 'Native', 5],
-  [/full professional/i, 'Fluent', 4],
-  [/professional working/i, 'Professional', 3],
-  [/limited working/i, 'Limited working', 2],
-  [/elementary/i, 'Elementary', 1],
+// en + it (il PDF del profilo usa la lingua dell'interfaccia di LinkedIn). L'ordine conta: "limitata" prima di "professionale".
+export const LANGUAGE_LEVELS: Array<[RegExp, string, number]> = [
+  [/native|bilingual|madrelingua|bilingue/i, 'Native', 5],
+  [/full professional|professionale completa/i, 'Fluent', 4],
+  [/limited working|professionale limitata/i, 'Limited working', 2],
+  [/professional working|competenza professionale/i, 'Professional', 3],
+  [/elementary|elementare/i, 'Elementary', 1],
 ];
 
-const cut = (s: string | undefined, max: number) => (s ? s.slice(0, max) : undefined) || undefined;
+export const cut = (s: string | undefined, max: number) => (s ? s.slice(0, max) : undefined) || undefined;
 
 /** `files`: nome file (qualsiasi maiuscolo) → contenuto testuale del CSV. */
 export function linkedInToCv(files: Record<string, string>): LinkedInImport {

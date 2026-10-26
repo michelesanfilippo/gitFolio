@@ -10,10 +10,13 @@ import { applyLinkedIn, availableSections, readLinkedInFiles, type ImportSection
 import { ZIP_MAX_BYTES, ZipError } from '@/importers/linkedin/zip';
 
 // Import da LinkedIn in due parti, perché LinkedIn non dà accesso al profilo completo ad app di terze parti:
-// 1) login LinkedIn (OpenID) → foto, nome, email;  2) export dati di LinkedIn (ZIP) → esperienze, studi, certificazioni...
+// 1) login LinkedIn (OpenID) → foto, nome, email;  2) PDF del profilo ("Save to PDF", istantaneo) → esperienze, studi,
+//    competenze... In alternativa lo ZIP dell'export dati, più completo ma pronto solo dopo minuti/ore.
 // Il file viene letto nel browser; l'utente sceglie le sezioni da importare e poi può modificare tutto a mano.
 
 const EXPORT_URL = 'https://www.linkedin.com/mypreferences/d/download-my-data';
+const PROFILE_URL = 'https://www.linkedin.com/in/me/';
+const isPdf = (f: File) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
 type Pick = ImportSection | 'photo';
 
 const EMPTY: LinkedInImport = { websites: [], experience: [], education: [], certifications: [], skills: [], languages: [], projects: [], approxDates: false };
@@ -106,16 +109,24 @@ export function LinkedInImportButton({ doc, onApply }: { doc: CvDocument; onAppl
     if (files.some((f) => f.size > ZIP_MAX_BYTES)) return setFileError(`File too large (max ${ZIP_MAX_BYTES / 1024 / 1024} MB).`);
     setBusy('file'); setFileError(undefined);
     try {
-      const { linkedInToCv } = await import('@/importers/linkedin/map');
-      const texts = await readLinkedInFiles(files);
-      if (!Object.keys(texts).length) throw new Error('empty');
-      const d = linkedInToCv(texts);
-      if (!availableSections(d).length) throw new Error('empty');
+      const pdf = files.find(isPdf);
+      let d: LinkedInImport;
+      if (pdf) {
+        const { readLinkedInPdf } = await import('@/importers/linkedin/pdf');
+        d = await readLinkedInPdf(await pdf.arrayBuffer()).catch(() => { throw new Error('pdf'); });
+      } else {
+        const { linkedInToCv } = await import('@/importers/linkedin/map');
+        const texts = await readLinkedInFiles(files);
+        if (!Object.keys(texts).length) throw new Error('empty');
+        d = linkedInToCv(texts);
+      }
+      if (!availableSections(d).length) throw new Error(pdf ? 'pdf' : 'empty');
       setData(d);
-      setFileName(files.length === 1 ? files[0]!.name : `${files.length} files`);
+      setFileName(pdf ? pdf.name : files.length === 1 ? files[0]!.name : `${files.length} files`);
     } catch (e) {
       setFileError(e instanceof ZipError ? 'This file is not a valid ZIP archive.'
-        : "We couldn't find LinkedIn data in this file. Upload the ZIP you downloaded from LinkedIn (or its CSV files).");
+        : e instanceof Error && e.message === 'pdf' ? "This doesn't look like a LinkedIn profile PDF. On your LinkedIn profile use Resources → Save to PDF."
+        : "We couldn't find LinkedIn data in this file. Upload your LinkedIn profile PDF or the data export ZIP.");
     } finally {
       setBusy(undefined);
     }
@@ -143,8 +154,8 @@ export function LinkedInImportButton({ doc, onApply }: { doc: CvDocument; onAppl
       <Modal open={open} onClose={close} title="Import from LinkedIn" size="lg">
         <div className="flex max-h-[72dvh] flex-col gap-4 overflow-y-auto pr-1">
           <p className="text-sm text-muted">
-            LinkedIn only shares your name, email and photo with other apps. Everything else (experience, education, certifications,
-            skills…) comes from the data export you can download from LinkedIn. You can edit everything afterwards.
+            LinkedIn only shares your name, email and photo with other apps. Everything else (experience, education, skills…)
+            comes from the PDF of your profile, which LinkedIn creates in a few seconds. You can edit everything afterwards.
           </p>
 
           <section className={cls.card} aria-labelledby="li-step-1">
@@ -160,7 +171,7 @@ export function LinkedInImportButton({ doc, onApply }: { doc: CvDocument; onAppl
                 <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-accent-text"><Check className="size-4" aria-hidden /> Connected</span>
               </div>
             ) : auth.status === 'disabled' ? (
-              <p className="text-sm text-muted">LinkedIn sign-in isn&apos;t enabled on this site yet. You can still import your data file below.</p>
+              <p className="text-sm text-muted">LinkedIn sign-in isn&apos;t enabled on this site yet. You can still import your profile PDF below.</p>
             ) : busy === 'login' ? (
               <div className="flex items-center gap-3 text-sm text-muted">
                 <Loader2 className="size-4 animate-spin" aria-hidden /> Finish signing in in the LinkedIn window…
@@ -176,25 +187,30 @@ export function LinkedInImportButton({ doc, onApply }: { doc: CvDocument; onAppl
           </section>
 
           <section className={cls.card} aria-labelledby="li-step-2">
-            <h3 id="li-step-2" className="flex items-center gap-2 text-sm font-semibold"><span className={cls.step}>2</span> Add your LinkedIn data export <span className="font-normal text-muted">· experience, education, more</span></h3>
+            <h3 id="li-step-2" className="flex items-center gap-2 text-sm font-semibold"><span className={cls.step}>2</span> Add your LinkedIn profile PDF <span className="font-normal text-muted">· experience, education, skills</span></h3>
             <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
-              <li>On LinkedIn open <strong className="text-fg">Settings → Data privacy → Get a copy of your data</strong>.</li>
-              <li>Select <strong className="text-fg">Profile, Positions, Education, Certifications, Skills, Languages</strong> (or the larger archive) and request it.</li>
-              <li>Download the ZIP from LinkedIn&apos;s email (usually ready in minutes, up to 24 hours) and drop it here.</li>
+              <li>Open <a href={PROFILE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline">your LinkedIn profile <ExternalLink className="size-3" aria-hidden /></a>.</li>
+              <li>Click <strong className="text-fg">Resources</strong> (or <strong className="text-fg">More</strong>) under your name, then <strong className="text-fg">Save to PDF</strong>.</li>
+              <li>Drop the downloaded PDF here.</li>
             </ol>
-            <a href={EXPORT_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 self-start text-sm font-semibold text-accent-text hover:underline">
-              Open LinkedIn data export <ExternalLink className="size-3.5" aria-hidden />
-            </a>
             <label onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}
               className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-5 text-center text-sm transition-colors focus-within:outline focus-within:outline-2 ${dragOver ? 'border-accent bg-accent/10' : 'border-border hover:border-accent'}`}>
               {busy === 'file' ? <Loader2 className="size-5 animate-spin text-muted" aria-hidden />
                 : fileName ? <FileArchive className="size-5 text-accent-text" aria-hidden /> : <Upload className="size-5 text-muted" aria-hidden />}
-              <span>{fileName ? <><strong>{fileName}</strong> · choose another file</> : <><strong>Choose the ZIP</strong> or drop it here</>}</span>
+              <span>{fileName ? <><strong>{fileName}</strong> · choose another file</> : <><strong>Choose the PDF</strong> or drop it here</>}</span>
               <span className="text-xs text-muted">Read in your browser, never uploaded.</span>
-              <input type="file" accept=".zip,.csv,application/zip" multiple className="sr-only" data-testid="linkedin-input"
+              <input type="file" accept=".pdf,application/pdf,.zip,.csv,application/zip" multiple className="sr-only" data-testid="linkedin-input"
                 onChange={(e) => { void readFiles(e.target.files); e.target.value = ''; }} />
             </label>
             {fileError ? <p role="alert" className="text-xs text-red-400">{fileError}</p> : null}
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer select-none hover:text-fg">Want every detail (all skills, projects, phone)? Use the full data export instead</summary>
+              <p className="mt-2">
+                On LinkedIn open <strong className="text-fg">Settings → Data privacy → Get a copy of your data</strong>, request it and drop the ZIP
+                here when LinkedIn emails it to you (from a few minutes up to 24 hours).{' '}
+                <a href={EXPORT_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline">Open data export <ExternalLink className="size-3" aria-hidden /></a>
+              </p>
+            </details>
           </section>
 
           {options.length ? (
