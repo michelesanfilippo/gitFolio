@@ -92,3 +92,17 @@ end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 4) Condivisione con gli amici: SOLO IL DESIGN ----------------------------------------------------------
+-- Il proprietario genera un link segreto (share_id). Chiunque abbia il link legge, tramite la funzione qui sotto, solo il
+-- nome del template e le impostazioni di design (colori, font, layout, stile): mai contenuti, foto, contatti o anteprima.
+-- La tabella resta privata (RLS invariata): la funzione è l'unico accesso pubblico.
+alter table public.templates add column if not exists share_id uuid unique;
+
+create or replace function public.shared_design(share uuid) returns table (name text, design jsonb)
+language sql stable security definer set search_path = public as $$
+  select t.name, t.data -> 'design' from public.templates t where share is not null and t.share_id = share;
+$$;
+
+revoke all on function public.shared_design(uuid) from public;
+grant execute on function public.shared_design(uuid) to anon, authenticated;

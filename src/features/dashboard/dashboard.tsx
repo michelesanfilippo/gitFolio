@@ -1,13 +1,13 @@
 'use client';
 
-import { FilePlus2, Trash2, UserRound } from 'lucide-react';
+import { Check, Copy, FilePlus2, Link2Off, Share2, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { withBasePath } from '@/config/brand';
 import { MAX_TEMPLATES } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
 import { PhotoField } from '@/features/photo/photo-field';
-import { deleteTemplate, listTemplates, type TemplateRow } from '@/lib/templates-api';
+import { deleteTemplate, listTemplates, shareTemplate, unshareTemplate, type TemplateRow } from '@/lib/templates-api';
 
 const fmtDate = (iso: string) => new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 
@@ -24,6 +24,7 @@ export function Dashboard({ locale }: { locale: string }) {
   const [username, setUsername] = useState('');
   const [photo, setPhoto] = useState<string>();
   const [msg, setMsg] = useState<string>();
+  const [sharing, setSharing] = useState<{ row: TemplateRow; url?: string; copied?: boolean; busy?: boolean; error?: string }>();
 
   const load = useCallback(async () => {
     try { setItems(await listTemplates()); setError(undefined); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -54,6 +55,32 @@ export function Dashboard({ locale }: { locale: string }) {
     setMsg(undefined);
     const err = await auth.updateProfile(patch);
     setMsg(err ?? ok);
+  }
+
+  const shareUrl = (share: string) => `${window.location.origin}${withBasePath(`/${locale}/editor/?share=${share}`)}`;
+
+  async function openShare(row: TemplateRow) {
+    setSharing({ row, busy: true });
+    try {
+      const share = await shareTemplate(row);
+      setSharing({ row: { ...row, share_id: share }, url: shareUrl(share) });
+      setItems((list) => list?.map((t) => (t.id === row.id ? { ...t, share_id: share } : t)));
+    } catch (e) { setSharing({ row, error: e instanceof Error ? e.message : String(e) }); }
+  }
+
+  async function copyShare() {
+    if (!sharing?.url) return;
+    try { await navigator.clipboard.writeText(sharing.url); setSharing({ ...sharing, copied: true }); } catch { /* il campo resta selezionabile a mano */ }
+  }
+
+  async function stopSharing() {
+    if (!sharing) return;
+    setSharing({ ...sharing, busy: true });
+    try {
+      await unshareTemplate(sharing.row.id);
+      setItems((list) => list?.map((t) => (t.id === sharing.row.id ? { ...t, share_id: null } : t)));
+      setSharing(undefined);
+    } catch (e) { setSharing({ ...sharing, busy: false, error: e instanceof Error ? e.message : String(e) }); }
   }
 
   async function confirmDelete() {
@@ -131,14 +158,45 @@ export function Dashboard({ locale }: { locale: string }) {
                   <span className="block text-xs text-muted">Edited {fmtDate(t.updated_at)}</span>
                 </span>
               </a>
-              <button type="button" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`}
-                className="m-3 ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted hover:bg-red-400/10 hover:text-red-300">
-                <Trash2 className="size-3.5" aria-hidden /> Delete
-              </button>
+              <span className="m-3 mt-2 flex items-center gap-1">
+                <button type="button" onClick={() => void openShare(t)} aria-label={`Share ${t.name}`}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs hover:bg-accent/10 hover:text-accent-text ${t.share_id ? 'text-accent-text' : 'text-muted'}`}>
+                  <Share2 className="size-3.5" aria-hidden /> {t.share_id ? 'Shared' : 'Share'}
+                </button>
+                <button type="button" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`}
+                  className="ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted hover:bg-red-400/10 hover:text-red-300">
+                  <Trash2 className="size-3.5" aria-hidden /> Delete
+                </button>
+              </span>
             </li>
           ))}
         </ul>
       </section>
+
+      <Modal open={Boolean(sharing)} onClose={() => setSharing(undefined)} title={`Share “${sharing?.row.name ?? ''}”`}>
+        <p className="text-sm text-muted">
+          Anyone with this link can use the <strong className="text-fg">design</strong> of this template: layout, colors, fonts and style.
+          Your name, photo, contacts and the rest of your CV are <strong className="text-fg">never shared</strong>. The template name is visible.
+        </p>
+        {sharing?.error ? <p role="alert" className="mt-4 rounded-md border border-red-400/40 bg-red-400/10 p-2.5 text-xs text-red-300">{sharing.error}</p> : null}
+        {sharing?.url ? (
+          <div className="mt-4 flex gap-2">
+            <input readOnly value={sharing.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()}
+              className="min-w-0 flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg" />
+            <button type="button" onClick={() => void copyShare()} className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg">
+              {sharing.copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} {sharing.copied ? 'Copied' : 'Copy link'}
+            </button>
+          </div>
+        ) : sharing?.busy ? <p className="mt-4 text-sm text-muted">Creating the link…</p> : null}
+        <div className="mt-5 flex items-center justify-between gap-2">
+          {sharing?.row.share_id ? (
+            <button type="button" disabled={sharing.busy} onClick={() => void stopSharing()} className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm text-muted hover:bg-red-400/10 hover:text-red-300 disabled:opacity-50">
+              <Link2Off className="size-4" aria-hidden /> Stop sharing
+            </button>
+          ) : <span />}
+          <button type="button" onClick={() => setSharing(undefined)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-border">Done</button>
+        </div>
+      </Modal>
 
       <Modal open={Boolean(toDelete)} onClose={() => setToDelete(undefined)} title="Delete this template?">
         <p className="text-sm text-muted">“{toDelete?.name}” will be permanently deleted. This cannot be undone.</p>

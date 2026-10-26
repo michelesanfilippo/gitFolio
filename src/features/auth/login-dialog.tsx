@@ -1,8 +1,10 @@
 'use client';
 
 import { MailCheck } from 'lucide-react';
+import { useLocale } from 'next-intl';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/modal';
+import { withBasePath } from '@/config/brand';
 import { CONFIRM_EMAIL, useAuth } from './auth-context';
 
 const inputCls = 'w-full rounded-md border border-border bg-bg px-3 py-2.5 text-sm text-fg placeholder:text-muted';
@@ -19,8 +21,16 @@ const GithubIcon = () => (
   </svg>
 );
 
+const LinkedInIcon = () => (
+  <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+    <rect width="24" height="24" rx="4" fill="#0A66C2" />
+    <path fill="#fff" d="M7.1 9.6h2.6V18H7.1zM8.4 5.4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM11.3 9.6h2.5v1.15h.04c.35-.66 1.2-1.36 2.47-1.36 2.64 0 3.13 1.74 3.13 4V18h-2.6v-4.1c0-.98-.02-2.24-1.36-2.24-1.37 0-1.58 1.07-1.58 2.17V18h-2.6z" />
+  </svg>
+);
+
 export function LoginDialog() {
   const auth = useAuth();
+  const locale = useLocale();
   const { loginOpen, loginMode, closeLogin, status } = auth;
   const [mode, setMode] = useState(loginMode);
   const [email, setEmail] = useState('');
@@ -40,7 +50,7 @@ export function LoginDialog() {
     if (result === CONFIRM_EMAIL) return setConfirm(true);
     if (result) setError(result);
   }
-  async function oauth(provider: 'google' | 'github') {
+  async function oauth(provider: 'google' | 'github' | 'linkedin_oidc') {
     setBusy(true); setError(undefined);
     const err = await auth.signInOAuth(provider);
     if (err) { setError(err); setBusy(false); }
@@ -60,6 +70,7 @@ export function LoginDialog() {
           <div className="flex flex-col gap-2.5">
             <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('google')}><GoogleIcon /> Continue with Google</button>
             <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('github')}><GithubIcon /> Continue with GitHub</button>
+            <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('linkedin_oidc')}><LinkedInIcon /> Continue with LinkedIn</button>
           </div>
           <p className="flex items-center gap-3 text-xs text-muted before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">or with email</p>
           <form onSubmit={submit} className="flex flex-col gap-3" noValidate={false}>
@@ -79,6 +90,9 @@ export function LoginDialog() {
             <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(undefined); }} className="font-semibold text-accent-text underline-offset-4 hover:underline">
               {mode === 'login' ? 'Register now' : 'Log in'}
             </button>
+          </p>
+          <p className="text-center text-xs text-muted">
+            By continuing you accept our <a href={withBasePath(`/${locale}/privacy/`)} className="underline underline-offset-2 hover:text-fg">privacy policy</a>.
           </p>
         </div>
       )}

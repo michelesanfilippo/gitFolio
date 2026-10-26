@@ -7,10 +7,11 @@ import { getPreset } from '@/config/presets';
 import type { CvDocument } from '@/core/schema/cv';
 import { sampleCv } from '@/core/schema/sample';
 import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
-import { isPhotoDataUrl, normalizeSaved, type SavedCvData } from '@/core/saved/saved-cv';
+import { isPhotoDataUrl, mergeKnown, normalizeSaved, type SavedCvData } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
 import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/local-draft';
+import { getSharedDesign } from '@/lib/templates-api';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import { ContentPanel } from './content/content-panel';
 import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
@@ -94,7 +95,7 @@ export function DesignLab() {
   const autosaveOn = useRef(false);   // attivo solo dopo il ripristino iniziale e fuori dai CV salvati nell'account
 
   // All'apertura: bozza OAuth > CV salvato (?t=, gestito da useCloudTemplates) > bozza locale. Un preset (?preset=<id>, dalla
-  // galleria della home) cambia solo il DESIGN: i contenuti già scritti dall'utente restano.
+  // galleria della home) o un design condiviso da un amico (?share=<id>) cambiano solo il DESIGN: i contenuti restano.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const stash = sessionStorage.getItem(DRAFT_KEY);
@@ -121,6 +122,18 @@ export function DesignLab() {
     }
     const preset = getPreset(params.get('preset'));
     if (preset) setDesign(preset.design());
+    const share = params.get('share');
+    if (share) {
+      window.history.replaceState(null, '', window.location.pathname);
+      const note = (text: string) => { setDraftNote(text); window.setTimeout(() => setDraftNote(undefined), 8000); };
+      getSharedDesign(share)
+        .then((got) => {
+          if (!got) return note('This shared design is no longer available.');
+          setDesign(mergeKnown(initialDesign(), got.design));
+          note(`Design “${got.name}” applied. Your content stays as it is.`);
+        })
+        .catch(() => note('This shared design could not be opened.'));
+    }
     autosaveOn.current = true;
   }, [applySaved, applyNormalized]);
 
