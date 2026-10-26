@@ -1,6 +1,5 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { withBasePath } from '@/config/brand';
 import { presets } from '@/config/presets';
@@ -14,7 +13,7 @@ const INERTIA_S = 0.35;        // quanto lontano porta lo slancio del rilascio (
 
 /**
  * Carosello 3D: i template sono su un anello inclinato (profondità) che avanza da solo card per card.
- * A mano: trascina col mouse/dito, frecce a lato, tasti ←/→, oppure clicca una card laterale per portarla davanti
+ * A mano: trascina col mouse/dito, tasti ←/→, oppure clicca una card laterale per portarla davanti
  * (cliccando quella davanti si apre l'editor). Il mouse sopra NON ferma l'avanzamento; si ferma solo col focus da tastiera
  * o durante un gesto. Con "riduci movimento" è una fila piatta scorrevole.
  */
@@ -120,9 +119,14 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
                 <a href={withBasePath(`/${locale}/editor/?preset=${p.id}`)} title={p.blurb} draggable={false} aria-label={`${p.name} CV template`} onClick={(e) => onCardClick(e, i)}
                   className="ring-link">
                   {Array.from({ length: SLICES }, (_, j) => (
-                    <span key={j} aria-hidden className="ring-slice" style={{ ['--j' as string]: j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
+                    <span key={`o${j}`} aria-hidden className="ring-slice" style={{ ['--j' as string]: j, ['--jb' as string]: j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
+                  ))}
+                  {/* faccia interna: visibile solo per le card sul lato opposto dell'anello (sequenza invertita: si legge dritta) */}
+                  {Array.from({ length: SLICES }, (_, j) => (
+                    <span key={`i${j}`} aria-hidden className="ring-slice ring-slice-in" style={{ ['--j' as string]: j, ['--jb' as string]: SLICES - 1 - j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
                   ))}
                   <span aria-hidden className="ring-label">{p.name}</span>
+                  <span aria-hidden className="ring-label ring-label-in">{p.name}</span>
                 </a>
               </li>
             ))}
@@ -130,17 +134,6 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
         </div>
       </div>
 
-      <div className="ring-controls mt-1 flex items-center justify-center gap-4">
-        <button type="button" onClick={() => go(-1)} aria-label="Previous template"
-          className="grid size-10 place-items-center rounded-full border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg">
-          <ChevronLeft className="size-5" aria-hidden />
-        </button>
-        <span className="min-w-28 text-center text-sm text-muted" aria-live="polite">{presets[front]?.name}</span>
-        <button type="button" onClick={() => go(1)} aria-label="Next template"
-          className="grid size-10 place-items-center rounded-full border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg">
-          <ChevronRight className="size-5" aria-hidden />
-        </button>
-      </div>
     </section>
   );
 }

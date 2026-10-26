@@ -29,18 +29,13 @@ await p.waitForTimeout(3700);
 const f2 = await front();
 ok('keeps advancing with the mouse over it', diff(f1, f2) >= 1);
 
-// frecce
-await p.getByRole('button', { name: 'Next template' }).click(); await p.waitForTimeout(150);
-const f3 = await front();
-ok('Next arrow goes one card forward', diff(f2, f3) === 1 || diff(f2, f3) === 2); // l'autoplay può inserirsi
-await p.getByRole('button', { name: 'Previous template' }).click(); await p.waitForTimeout(150);
-const f4 = await front();
-ok('Previous arrow goes back', diff(f4, f3) === 1);
+let f4 = f2;
 
 // tastiera
-await p.getByRole('button', { name: 'Next template' }).focus();
+await p.locator('.ring-card a').first().focus();
 await p.keyboard.press('ArrowRight'); await p.waitForTimeout(150);
-ok('arrow key moves the ring', diff(f4, await front()) === 1 || diff(f4, await front()) === 2);
+ok('arrow key moves the ring', diff(f4, await front()) >= 1);
+ok('no arrow buttons are rendered', (await p.getByRole('button', { name: /(Next|Previous) template/ }).count()) === 0);
 
 // trascinamento a mano col mouse (card per card, aggancio alla più vicina)
 await p.waitForTimeout(700);

@@ -25,21 +25,21 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 
 /* Carosello 3D: anello inclinato, card "curve" (fette lungo la circonferenza), posizione gestita da JS nel componente. */
 .ring-stage {
-  --w: 126; --gap: 84; --slices: 9;
+  --w: 114; --gap: 80; --slices: 9;
   --card-w: calc(var(--w) * 1px);
   --card-h: calc(var(--card-w) * 1.414);
   --ring-r: calc((var(--card-w) + var(--gap) * 1px) * var(--n) / 6.28318);       /* raggio: card distanziate, anello ampio */
   --theta: calc(360deg * var(--w) / ((var(--w) + var(--gap)) * var(--n)));       /* angolo coperto da una card */
-  position: relative; height: 24rem; perspective: 1300px; perspective-origin: 50% 25%;
+  position: relative; height: 22.5rem; perspective: 1300px; perspective-origin: 50% 25%;
   overflow: hidden; user-select: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
-@media (min-width: 640px) { .ring-stage { --w: 150; height: 27rem; } }
+@media (min-width: 640px) { .ring-stage { --w: 136; height: 25rem; } }
 /* inclinazione verso il basso a sinistra: dà profondità all'anello */
 .ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(9deg) rotateZ(-4.5deg); transform-origin: 50% 50%; }
 .ring-track {
-  position: absolute; left: 50%; top: 4.5rem; width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
+  position: absolute; left: 50%; top: 4.25rem; width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
   transform-style: preserve-3d; will-change: transform;
 }
 .ring-card { position: absolute; inset: 0; transform-style: preserve-3d; }
@@ -49,18 +49,21 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   width: calc(var(--card-w) / var(--slices) + 2px);                                  /* +2px di sovrapposizione: niente cuciture tra le fette */
   left: calc(50% - var(--card-w) / var(--slices) / 2);
   background-size: var(--card-w) var(--card-h); background-repeat: no-repeat;
-  background-position: calc(var(--j) * var(--card-w) / var(--slices) * -1) 0;
+  background-position: calc(var(--jb) * var(--card-w) / var(--slices) * -1) 0;
   transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r));
   backface-visibility: hidden; transition: filter .25s;
 }
-.ring-slice:first-of-type { border-radius: 10px 0 0 10px; }
-.ring-slice:nth-last-of-type(2) { border-radius: 0 10px 10px 0; }
+/* faccia interna: stessa posizione, girata di 180°; più scura perché è il lato "di fondo" dell'anello */
+.ring-slice-in { transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r)) rotateY(180deg); filter: brightness(.62); }
+.ring-slice:nth-of-type(1), .ring-slice:nth-of-type(10) { border-radius: 10px 0 0 10px; }
+.ring-slice:nth-of-type(9), .ring-slice:nth-of-type(18) { border-radius: 0 10px 10px 0; }
 .ring-label {
   position: absolute; top: 0; left: 0; width: var(--card-w); margin-top: calc(var(--card-h) + 10px); text-align: center;
   font-size: 12px; font-weight: 600; color: var(--fg);
   transform: rotateY(var(--a)) translateZ(var(--ring-r)); backface-visibility: hidden; transition: color .25s;
 }
-.ring-link:hover .ring-slice { filter: brightness(1.08); }
+.ring-link:hover .ring-slice:not(.ring-slice-in) { filter: brightness(1.08); }
+.ring-label-in { display: none; } /* i nomi delle card sul lato di fondo creerebbero solo confusione */
 .ring-link:hover .ring-label, .ring-link:focus-visible .ring-label { color: var(--accent-text); }
 .ring-link:focus-visible .ring-slice { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (prefers-reduced-motion: reduce) {
@@ -69,5 +72,6 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   .ring-track { position: static; display: flex; gap: 1.25rem; width: max-content; height: auto; margin: 0 auto; padding: 0 1.5rem; transform: none !important; transition: none !important; }
   .ring-card { position: relative; width: var(--card-w); height: calc(var(--card-h) + 2rem); }
   .ring-slice { left: calc(var(--j) * var(--card-w) / var(--slices)); transform: none; backface-visibility: visible; }
+  .ring-slice-in, .ring-label-in { display: none; }
   .ring-label { transform: none; }
 }
