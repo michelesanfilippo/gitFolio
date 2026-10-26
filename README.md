@@ -2,11 +2,11 @@
 
 # gitFolio
 
-Free, open source CV builder. No watermark, no paywall, no sign-up. Your data stays in your browser.
+Free and open source CV builder. 
+No watermark, no paywall, no ads.
+> Your career, your way.
 
 Live: https://michelesanfilippo.github.io/gitFolio/
-
-> Your career, your way.
 
 ## Development
 
