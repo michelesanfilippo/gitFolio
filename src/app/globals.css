@@ -23,32 +23,30 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-/* Carosello template della home */
-.marquee {
+/* Carosello 3D dei template: anello che ruota a passi (keyframes `ring-step` generati nel componente). */
+.ring-stage {
+  --card-w: 120px;
+  --ring-r: calc((var(--card-w) + 28px) * var(--n) / 6.28318); /* raggio perché le card non si tocchino */
+  position: relative; height: 20.5rem; perspective: 1200px; perspective-origin: 50% 35%;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
 }
-.marquee-track { display: flex; width: max-content; animation: marquee 60s linear infinite; }
-.marquee:focus-within .marquee-track { animation-play-state: paused; } /* solo tastiera / clic su un template: il mouse sopra NON ferma il carosello */
-@keyframes marquee { to { transform: translateX(-50%); } }
+@media (min-width: 640px) { .ring-stage { --card-w: 150px; height: 23rem; } }
+.ring {
+  position: absolute; left: 50%; top: 1.25rem; width: var(--card-w); margin-left: calc(var(--card-w) / -2);
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--ring-r) * -0.4));
+  animation: ring-step 43s infinite;
+}
+.ring:has(a:focus-visible) { animation-play-state: paused; } /* solo tastiera / clic su un template */
+.ring-card {
+  position: absolute; inset: 0 auto auto 0; width: var(--card-w);
+  transform: rotateY(var(--a)) translateZ(var(--ring-r));
+  backface-visibility: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
-  .marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; }
-  .marquee-track { animation: none; }
-}
-
-/* Sfondo della hero: pattern lime sfocato (bokeh) a tutta larghezza. Solo CSS: nessun costo di rete o di script. */
-.hero-glow {
-  position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%, #000 76%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 24%, #000 76%, transparent 100%);
-}
-.hero-glow::before, .hero-glow::after { content: ''; position: absolute; inset: -24px; }
-.hero-glow::before { /* punti piccoli, leggermente sfocati */
-  background-image: radial-gradient(circle, rgb(198 243 107 / 0.4) 0 2.2px, transparent 2.9px);
-  background-size: 26px 26px; filter: blur(1.1px);
-}
-.hero-glow::after { /* punti grandi e molto sfocati, sfalsati: profondità */
-  background-image: radial-gradient(circle, rgb(198 243 107 / 0.24) 0 8px, transparent 10px);
-  background-size: 78px 78px; background-position: 30px 22px; filter: blur(6px);
+  .ring-stage { height: auto; perspective: none; overflow-x: auto; mask-image: none; -webkit-mask-image: none; }
+  .ring { position: static; display: flex; gap: 1.25rem; width: max-content; margin: 0 auto; padding: 0 1.5rem; transform: none; animation: none; }
+  .ring-card { position: static; transform: none; }
 }

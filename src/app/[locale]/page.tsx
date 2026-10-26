@@ -1,6 +1,7 @@
 import { use } from 'react';
 import { useTranslations } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
+import { HeroWaves } from '@/components/hero-waves';
 import { TemplateCarousel } from '@/components/template-carousel';
 import { withBasePath } from '@/config/brand';
 
@@ -12,7 +13,7 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
   return (
     <>
       <div className="relative isolate overflow-hidden">
-        <div className="hero-glow" aria-hidden />
+        <HeroWaves />
       <section className="mx-auto flex max-w-5xl flex-col items-start gap-6 px-6 py-16">
         <p className="text-sm uppercase tracking-widest text-accent-text">{t('tagline')}</p>
         <h1 className="text-4xl font-bold sm:text-6xl">
