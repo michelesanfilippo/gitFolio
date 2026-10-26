@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { brand, withBasePath } from '@/config/brand';
+import { HeaderActions } from '@/features/auth/header-actions';
 
 function GithubIcon() {
   return (
@@ -17,11 +18,14 @@ export function SiteHeader({ locale }: { locale: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-12 w-auto sm:h-14" />
       </a>
-      <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer"
-         className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
-        <GithubIcon />
-        <span>{t('star')}</span>
-      </a>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <HeaderActions locale={locale} />
+        <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer"
+           className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
+          <GithubIcon />
+          <span className="hidden sm:inline">{t('star')}</span>
+        </a>
+      </div>
     </header>
   );
 }

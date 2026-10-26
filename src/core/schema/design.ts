@@ -63,8 +63,8 @@ import { defaultPattern } from '../pattern/patterns';
 import type { PhotoShape } from '../photo/shapes';
 
 export interface PhotoSettings {
-  /** Posizione rispetto al nome: la foto è sempre ancorata al blocco nome, si sposta con esso. */
-  position: 'left' | 'right' | 'top';
+  /** Posizione: accanto al nome (si sposta con esso) oppure in cima alla colonna laterale, sopra i contatti (solo con 2 colonne). */
+  position: 'left' | 'right' | 'top' | 'sidebar';
   shape: PhotoShape;
   size: number; // pt (altezza)
   /** Spessore del bordo in pt (0 = nessun bordo). Fa parte della dimensione totale `size`. */

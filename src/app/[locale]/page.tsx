@@ -28,7 +28,7 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
           {t('cta')}
         </a>
       </section>
-      <TemplateCarousel locale={locale} title={t('templatesTitle')} hint={t('templatesHint')} />
+      <TemplateCarousel locale={locale} label={t('templatesLabel')} />
     </>
   );
 }

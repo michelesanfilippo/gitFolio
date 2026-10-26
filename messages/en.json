@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "gitFolio",
-    "description": "Create professional CVs for free. No watermark, no paywall. Your data stays in your browser."
+    "description": "Create professional CVs for free. No watermark, no paywall. Fully customizable and open source."
   },
   "common": {
     "language": "Language",
@@ -14,9 +14,8 @@
     "title": "Your CV.",
     "subtitle": "No watermark, no paywall.",
     "cta": "Let's start",
-    "privacy": "Your data never leaves your browser.",
+    "privacy": "Your career, your way.",
     "titleLine2": "Free with no limits.",
-    "templatesTitle": "Start from a template",
-    "templatesHint": "Every template is fully yours to change: colors, fonts, layout, photo and background patterns."
+    "templatesLabel": "CV template examples"
   }
 }

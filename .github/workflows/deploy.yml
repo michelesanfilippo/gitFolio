@@ -20,7 +20,11 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-        env: { NEXT_PUBLIC_BASE_PATH: /gitFolio }
+        env:
+          NEXT_PUBLIC_BASE_PATH: /gitFolio
+          # Repository variables (Settings > Secrets and variables > Actions > Variables). La chiave anon e' pubblica per progetto.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with: { path: out }
   deploy:

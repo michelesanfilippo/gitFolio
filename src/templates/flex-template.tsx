@@ -244,10 +244,11 @@ function ContactLines({ ctx, stacked }: { ctx: Ctx; stacked: boolean }) {
   );
 }
 
-function Photo({ ctx }: { ctx: Ctx }) {
+function Photo({ ctx, maxSize }: { ctx: Ctx; maxSize?: number }) {
   const src = ctx.doc.personal.photo;
   if (!src) return null;
-  const { size, shape, borderWidth, borderColor } = ctx.d.photo;
+  const { shape, borderWidth, borderColor } = ctx.d.photo;
+  const size = maxSize ? Math.min(ctx.d.photo.size, maxSize) : ctx.d.photo.size;
   const bw = Math.max(0, borderWidth);
   // `size` è l'ingombro totale: il bordo sta dentro (la foto si restringe). Il bordo è un contenitore colorato
   // con padding (non border-width sull'immagine, che react-pdf non disegna in modo affidabile).
@@ -301,14 +302,16 @@ function PatternLayer({ ctx, pageW, pageH }: { ctx: Ctx; pageW: number; pageH: n
  * (sinistra/centro/destra), quindi spostare il nome sposta anche la foto; `photo.position` ne decide
  * il lato rispetto al nome.
  */
-function Header({ ctx, withContacts }: { ctx: Ctx; withContacts: boolean }) {
+function Header({ ctx, withContacts, photoInSide = false }: { ctx: Ctx; withContacts: boolean; photoInSide?: boolean }) {
   const { personal } = ctx.doc;
   const { typography: ty, colors, style, photo } = ctx.d;
   const align = style.headerAlign;
   const edge = align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end';
-  const hasPhoto = Boolean(personal.photo);
-  const stacked = hasPhoto && photo.position === 'top';
-  const photoFirst = hasPhoto && photo.position === 'left';
+  const hasPhoto = Boolean(personal.photo) && !photoInSide;
+  // 'sidebar' senza colonna laterale (o con foto già nella barra): ricade accanto al nome, a sinistra.
+  const position = photo.position === 'sidebar' ? 'left' : photo.position;
+  const stacked = hasPhoto && position === 'top';
+  const photoFirst = hasPhoto && position === 'left';
   // Testo accanto alla foto: allineato al lato vicino alla foto; sopra/senza foto segue headerAlign.
   const textAlign = hasPhoto && !stacked ? (photoFirst ? 'left' : 'right') : align;
   const textEdge = textAlign === 'left' ? 'flex-start' : textAlign === 'center' ? 'center' : 'flex-end';
@@ -421,6 +424,7 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
   const side = pick(true);
 
   const sideW = (inner - COLUMN_GAP) * (page.columnRatio / 100);
+  const photoInSide = twoCol && page.sidebarSections.length > 0 && design.photo.position === 'sidebar' && Boolean(doc.personal.photo);
   const mainW = inner - COLUMN_GAP - sideW;
   const fill = design.style.sidebarFill;
   const heightMode = page.sidebarHeight;
@@ -428,13 +432,18 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
 
   const sidebar = (
     <View style={{ width: sideW, ...(card ? { backgroundColor: colors.badge, borderRadius: 6, padding: 10, alignSelf: 'flex-start' } : {}) }}>
+      {photoInSide ? (
+        <View style={{ alignItems: 'center', marginBottom: page.sectionGap }}>
+          <Photo ctx={ctx} maxSize={sideW - (card ? 20 : 0)} />
+        </View>
+      ) : null}
       {contactsInSide ? <View style={offset('contacts') ? { marginTop: offset('contacts') } : undefined}><Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section></View> : null}
       {side}
     </View>
   );
   const mainCol = (
     <View style={{ width: mainW }}>
-      <Header ctx={ctx} withContacts={!contactsInSide} />
+      <Header ctx={ctx} withContacts={!contactsInSide} photoInSide={photoInSide} />
       {main}
     </View>
   );

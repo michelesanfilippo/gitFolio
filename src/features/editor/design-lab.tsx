@@ -1,16 +1,20 @@
 'use client';
 
 import { Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
 import { getPreset } from '@/config/presets';
 import type { Locale } from '@/core/schema/cv';
-import { sampleCv } from '@/core/schema/sample';
+import { LOREM_PROFILE_HTML, sampleCv } from '@/core/schema/sample';
 import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
 import type { RichText } from '@/core/richtext/ast';
+import { astToHtml } from '@/core/richtext/to-html';
+import { isPhotoDataUrl, normalizeSaved, type SavedCvData } from '@/core/saved/saved-cv';
+import { useAuth } from '@/features/auth/auth-context';
 import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import { ColorsPanel, ContentPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
+import { useCloudTemplates } from './cloud';
 import { PdfPreview } from './pdf-preview';
 
 // Laboratorio di Fase 0: valida motore PDF + opzioni di design. Sarà sostituito dall'editor (Fase 1).
@@ -32,6 +36,22 @@ const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.roun
 
 const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
 
+// Bozza conservata solo durante il redirect del login OAuth (la pagina si ricarica).
+const DRAFT_KEY = 'gitfolio:oauth-draft';
+
+/** Miniatura JPEG della prima pagina per la Dashboard. */
+function makeThumbnail(src: HTMLCanvasElement): string {
+  const w = 260;
+  const h = Math.round((src.height * w) / src.width);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const ctx = out.getContext('2d')!;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, w, h);
+  return out.toDataURL('image/jpeg', 0.72);
+}
+
 export function DesignLab() {
   const [design, setDesign] = useState<DesignSettings>(initialDesign);
   const [tab, setTab] = useState<TabId>('content');
@@ -44,18 +64,73 @@ export function DesignLab() {
   const [text, setText] = useState<string[]>();
   const [showText, setShowText] = useState(false);
   const [error, setError] = useState<string>();
+  const [profileHtml, setProfileHtml] = useState(LOREM_PROFILE_HTML);
+  const [profileKey, setProfileKey] = useState(0);
   const renderer = useRef<PdfRenderer>(undefined);
+  const thumb = useRef<string>(undefined);
+  const auth = useAuth();
 
   const doc = useMemo(() => {
     const base = sampleCv(locale);
     return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
   }, [locale, profile, photo]);
 
-  // /editor/?preset=<id> parte da un preset (usato dalla galleria della home)
-  useEffect(() => {
-    const preset = getPreset(new URLSearchParams(window.location.search).get('preset'));
-    if (preset) setDesign(preset.design());
+  /** Applica un documento salvato (database o bozza OAuth) allo stato dell'editor, validandolo. */
+  const applySaved = useCallback((raw: unknown) => {
+    const n = normalizeSaved(raw, initialDesign());
+    if (!n) return false;
+    setDesign(n.design);
+    setLocale(n.locale);
+    setPhoto(n.photo);
+    setProfile(n.profile);
+    setProfileHtml(n.profile ? astToHtml(n.profile) : LOREM_PROFILE_HTML);
+    setProfileKey((k) => k + 1); // ricrea l'editor di testo con il nuovo contenuto
+    return true;
   }, []);
+
+  const photoDecided = useRef(false); // foto predefinita: si applica una sola volta, mai sopra scelte dell'utente
+
+  // All'apertura: bozza OAuth > preset (?preset=<id>, dalla galleria della home). I CV salvati (?t=) li gestisce useCloudTemplates.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const draft = sessionStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      sessionStorage.removeItem(DRAFT_KEY);
+      try {
+        if (applySaved(JSON.parse(draft))) { photoDecided.current = true; return; }
+      } catch { /* bozza illeggibile: si ignora */ }
+    }
+    if (params.has('t')) { photoDecided.current = true; return; }
+    const preset = getPreset(params.get('preset'));
+    if (preset) setDesign(preset.design());
+  }, [applySaved]);
+
+  const snapshot = useCallback((): SavedCvData => ({ v: 1, locale, profile, design, photo }), [locale, profile, design, photo]);
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
+
+  // Prima del redirect OAuth la pagina si ricarica: la bozza passa per sessionStorage (solo in questa scheda).
+  useEffect(() => {
+    auth.beforeRedirect.current = () => {
+      try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(snapshotRef.current())); } catch { /* quota piena: pazienza */ }
+    };
+    return () => { auth.beforeRedirect.current = null; };
+  }, [auth.beforeRedirect]);
+
+  // Foto predefinita dell'account nei CV nuovi.
+  useEffect(() => {
+    const def = auth.profile?.default_photo;
+    if (photoDecided.current || !def || !isPhotoDataUrl(def)) return;
+    photoDecided.current = true;
+    setPhoto((current) => current ?? def);
+  }, [auth.profile]);
+
+  const cloud = useCloudTemplates({
+    getSnapshot: () => snapshotRef.current(),
+    getThumbnail: () => thumb.current,
+    load: (data) => { applySaved(data); photoDecided.current = true; },
+    canSave: Boolean(buffer),
+  });
 
   useEffect(() => {
     renderer.current = createPdfRenderer();
@@ -133,7 +208,7 @@ export function DesignLab() {
 
         <div className="min-h-0 flex-1 overflow-y-auto pt-4">
           <PanelBody id="content" active={tab === 'content'}>
-            <ContentPanel locale={locale} setLocale={setLocale} setProfile={setProfile} showText={showText} setShowText={setShowText} text={text} />
+            <ContentPanel locale={locale} setLocale={setLocale} setProfile={setProfile} profileHtml={profileHtml} profileKey={profileKey} showText={showText} setShowText={setShowText} text={text} />
           </PanelBody>
           <PanelBody id="photo" active={tab === 'photo'}><PhotoPanel design={design} set={set} photo={photo} setPhoto={setPhoto} /></PanelBody>
           <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} /></PanelBody>
@@ -169,13 +244,18 @@ export function DesignLab() {
             </span>
           </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
-          <button type="button" onClick={download} disabled={!buffer}
-            className="ml-auto flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
-            <Download className="size-4" aria-hidden /> Download PDF
-          </button>
+          {cloud.message}
+          <div className="ml-auto flex items-center gap-3">
+            {cloud.saveButton}
+            <button type="button" onClick={download} disabled={!buffer}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
+              <Download className="size-4" aria-hidden /> Download PDF
+            </button>
+          </div>
         </div>
-        <div className="min-h-0 flex-1"><PdfPreview buffer={buffer} zoom={zoom} /></div>
+        <div className="min-h-0 flex-1"><PdfPreview buffer={buffer} zoom={zoom} onFirstPage={(c) => { thumb.current = makeThumbnail(c); }} /></div>
       </section>
+      {cloud.dialogs}
     </div>
   );
 }

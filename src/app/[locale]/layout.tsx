@@ -5,6 +5,7 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteHeader } from '@/components/site-header';
+import { AuthProvider } from '@/features/auth/auth-provider';
 import '../globals.css';
 
 export const generateStaticParams = () => routing.locales.map((locale) => ({ locale }));
@@ -24,8 +25,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
     <html lang={locale} className="dark">
       <body>
         <NextIntlClientProvider>
-          <SiteHeader locale={locale} />
-          <main>{children}</main>
+          <AuthProvider>
+            <SiteHeader locale={locale} />
+            <main>{children}</main>
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { openPdf } from '@/lib/pdfjs';
 
 /** Anteprima: stesso PDF dell'export, disegnato su canvas con pdf.js (una canvas per pagina). */
-export function PdfPreview({ buffer, zoom }: { buffer: ArrayBuffer | undefined; zoom: number }) {
+export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer | undefined; zoom: number; onFirstPage?: (canvas: HTMLCanvasElement) => void }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,11 +34,14 @@ export function PdfPreview({ buffer, zoom }: { buffer: ArrayBuffer | undefined; 
         if (cancelled) return;
         canvases.push(canvas);
       }
-      if (!cancelled) el.replaceChildren(...canvases); // swap atomico: nessun flicker tra due render
+      if (!cancelled) {
+        el.replaceChildren(...canvases); // swap atomico: nessun flicker tra due render
+        if (canvases[0]) onFirstPage?.(canvases[0]);
+      }
       void doc.loadingTask.destroy();
     })().catch((e) => console.error('preview', e));
     return () => { cancelled = true; };
-  }, [buffer, zoom]);
+  }, [buffer, zoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={host} className="h-full overflow-auto p-4" />;
 }

@@ -13,7 +13,6 @@ import { generatePattern, resolvePatternColor, PATTERN_ANCHORS, PATTERN_KINDS, p
 import { PhotoField } from '@/features/photo/photo-field';
 import { RichTextEditor } from '@/features/richtext/rich-text-editor';
 import type { RichText } from '@/core/richtext/ast';
-import { LOREM_PROFILE_HTML } from '@/core/schema/sample';
 
 export type SetDesign = <K extends keyof DesignSettings>(key: K, patch: Partial<DesignSettings[K]>) => void;
 interface DesignProps { design: DesignSettings; set: SetDesign }
@@ -129,7 +128,7 @@ function AssignList({ value, offsets, onChange, onOffset }: {
 
 export function ContentPanel(props: {
   locale: Locale; setLocale: (l: Locale) => void;
-  setProfile: (p: RichText) => void; showText: boolean; setShowText: (v: boolean) => void; text?: string[];
+  setProfile: (p: RichText) => void; profileHtml: string; profileKey: number; showText: boolean; setShowText: (v: boolean) => void; text?: string[];
 }) {
   return (
     <>
@@ -138,7 +137,7 @@ export function ContentPanel(props: {
           options={[{ value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' }]} />
       </Section>
       <Section title="Profile text" hint="Format with bold, italic, lists and links. Pasting from Word or Google Docs is cleaned automatically.">
-        <div className="col-span-2"><RichTextEditor label="Profile" onChange={props.setProfile} initialHtml={LOREM_PROFILE_HTML} /></div>
+        <div className="col-span-2"><RichTextEditor key={props.profileKey} label="Profile" onChange={props.setProfile} initialHtml={props.profileHtml} /></div>
       </Section>
       <Section title="Recruiter software check" hint="Applicant tracking systems read the text of your PDF. See exactly what they would see.">
         <Toggle label="Show the text a parser reads" checked={props.showText} onChange={props.setShowText} />
@@ -172,9 +171,12 @@ export function PhotoPanel({ design, set, photo, setPhoto }: DesignProps & { pho
           </>
         ) : null}
       </Section>
-      <Section title="Position" hint="The photo always stays attached to your name: if the name moves, the photo moves with it.">
+      <Section title="Position" hint="Left, right or above your name, the photo stays attached to it: if the name moves, the photo moves with it. “Side column” puts it at the top of the side column, above Contacts.">
         <Segmented label="Photo placement" value={design.photo.position} onChange={(v) => set('photo', { position: v })}
-          options={[{ value: 'left', label: 'Left of name' }, { value: 'right', label: 'Right of name' }, { value: 'top', label: 'Above name' }]} />
+          options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'top', label: 'Above' }, { value: 'sidebar', label: 'Side column' }]} />
+        {design.photo.position === 'sidebar' && !(design.page.columns === 2 && design.page.sidebarSections.length > 0) ? (
+          <Hint>The side column needs two columns: turn them on in Layout. Until then the photo sits to the left of your name.</Hint>
+        ) : null}
         <Segmented label="Align name and photo" value={design.style.headerAlign} onChange={(v) => set('style', { headerAlign: v })}
           options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} />
       </Section>
