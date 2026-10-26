@@ -1,34 +1,37 @@
 'use client';
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { Rotate3d } from 'lucide-react';
+import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { withBasePath } from '@/config/brand';
 
 const REST = { rx: 5, ry: -1 };   // posa di riposo (vista leggermente dall'alto)
 const SWAY = { rx: 1.2, ry: 4 };  // ampiezza del dondolio (gradi)
 const SWAY_S = 9;                 // periodo del dondolio
 const DEG_PER_PX = 0.45;          // sensibilità del trascinamento
-const RX_MAX = 35;                // inclinazione verticale massima
+const RY_MAX = 32;                // rotazione massima: lo schermo (dove andrà il video demo) resta sempre ben visibile
+const RX_MAX = 16;
 const FRICTION = 3.5;             // decadimento dello slancio (1/s)
 const RETURN_AFTER_MS = 1800;     // dopo il rilascio torna di fronte dopo questo tempo
 const RETURN_RATE = 2.5;          // velocità del ritorno (1/s)
 const EDGES = 12;                 // strati che formano lo spessore
-const NUDGE_FIRST_MS = 1400;      // invito all'interazione: mezzo giro avanti e indietro, finché l'utente non lo tocca
+const NUDGE_FIRST_MS = 1400;      // invito all'interazione: accenna una rotazione, finché l'utente non lo tocca
 const NUDGE_EVERY_MS = 6500;
 const NUDGE_MS = 1700;
 const NUDGE_DEG = 28;
 
+/** Limite morbido: vicino a 0 segue il dito, poi "fa resistenza" e non supera mai ±max. */
+const soft = (v: number, max: number) => max * Math.tanh(v / max);
+const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
+
 /**
- * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, spessore, retro con fotocamere, Dynamic Island.
- * Dondola da solo; si può ruotare trascinandolo (con slancio), poi torna lentamente di fronte.
- * Finché non viene toccato, ogni tanto accenna una rotazione e mostra `hint` (es. "Drag to rotate").
+ * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, spessore, Dynamic Island.
+ * Dondola da solo; trascinandolo si inclina (con slancio) entro pochi gradi, poi torna lentamente di fronte.
+ * Finché non viene toccato, ogni tanto accenna una rotazione per far capire che si può muovere.
  * `children` è lo schermo: per ora una schermata statica della home; in seguito si potrà sostituire con un <video>.
  */
-export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: string }) {
+export function PhoneMock({ children }: { children?: ReactNode }) {
   const scene = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const s = useRef({ rx: 0, ry: 0, vx: 0, vy: 0, id: -1, x: 0, y: 0, t: 0, last: 0, n: 0, touched: false });
-  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,11 +44,13 @@ export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: str
       if (st.id === -1) {
         st.ry += st.vy * dt; st.rx += st.vx * dt;
         const f = Math.exp(-FRICTION * dt); st.vy *= f; st.vx *= f;
-        if (Date.now() - st.last > RETURN_AFTER_MS) { // torna di fronte (al giro intero più vicino)
+        if (Date.now() - st.last > RETURN_AFTER_MS) { // torna di fronte
           const k = 1 - Math.exp(-RETURN_RATE * dt);
-          st.ry += (Math.round(st.ry / 360) * 360 - st.ry) * k; st.rx -= st.rx * k;
+          st.ry -= st.ry * k; st.rx -= st.rx * k;
         }
-        st.rx = Math.max(-RX_MAX, Math.min(RX_MAX, st.rx));
+        // oltre il doppio del limite il trascinamento non ha più effetto visibile: si ferma lì (niente "debito" da recuperare)
+        if (Math.abs(st.ry) > RY_MAX * 2) { st.ry = clamp(st.ry, RY_MAX * 2); st.vy = 0; }
+        if (Math.abs(st.rx) > RX_MAX * 2) { st.rx = clamp(st.rx, RX_MAX * 2); st.vx = 0; }
       }
       st.n = 0;
       const since = now - start - NUDGE_FIRST_MS;
@@ -56,7 +61,7 @@ export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: str
       const w = reduce ? 0 : Math.sin((now / 1000 / SWAY_S) * Math.PI * 2);
       const c = reduce ? 0 : Math.cos((now / 1000 / SWAY_S) * Math.PI * 2);
       if (body.current) body.current.style.transform =
-        `rotateX(${REST.rx + SWAY.rx * c + st.rx}deg) rotateY(${REST.ry + SWAY.ry * w + st.ry + st.n}deg)`;
+        `rotateX(${REST.rx + SWAY.rx * c + soft(st.rx, RX_MAX)}deg) rotateY(${REST.ry + SWAY.ry * w + soft(st.ry + st.n, RY_MAX)}deg)`;
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
@@ -67,7 +72,6 @@ export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: str
     const st = s.current;
     st.ry += st.n; st.n = 0; // l'eventuale invito in corso diventa la posizione di partenza: nessuno scatto
     Object.assign(st, { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), vx: 0, vy: 0, touched: true });
-    setTouched(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     scene.current?.classList.add('is-dragging');
   };
@@ -76,7 +80,7 @@ export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: str
     if (st.id !== e.pointerId) return;
     const now = performance.now(), dt = Math.max(1, now - st.t) / 1000;
     const dy = (e.clientX - st.x) * DEG_PER_PX, dx = -(e.clientY - st.y) * DEG_PER_PX;
-    st.ry += dy; st.rx = Math.max(-RX_MAX, Math.min(RX_MAX, st.rx + dx));
+    st.ry = clamp(st.ry + dy, RY_MAX * 2); st.rx = clamp(st.rx + dx, RX_MAX * 2);
     st.vy = dy / dt; st.vx = dx / dt;  // velocità istantanea: diventa lo slancio al rilascio
     Object.assign(st, { x: e.clientX, y: e.clientY, t: now, last: Date.now() });
   };
@@ -91,26 +95,12 @@ export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: str
   return (
     <div ref={scene} className="phone-scene" aria-hidden onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
       <div className="phone-shadow" />
-      {hint && (
-        <span className={`phone-hint${touched ? ' is-hidden' : ''}`}>
-          <Rotate3d aria-hidden size={14} strokeWidth={2} />
-          {hint}
-        </span>
-      )}
       <div ref={body} className="phone-sway">
         {Array.from({ length: EDGES }, (_, k) => <span key={k} className="phone-edge" style={{ ['--k' as string]: k }} />)}
         <span className="phone-btn phone-btn-action" />
         <span className="phone-btn phone-btn-vol-up" />
         <span className="phone-btn phone-btn-vol-down" />
         <span className="phone-btn phone-btn-power" />
-        <div className="phone-back">
-          <div className="phone-cams">
-            <span className="phone-lens phone-lens-1" />
-            <span className="phone-lens phone-lens-2" />
-            <span className="phone-lens phone-lens-3" />
-            <span className="phone-flash" />
-          </div>
-        </div>
         <div className="phone">
           <div className="phone-bezel">
             <div className="phone-screen">

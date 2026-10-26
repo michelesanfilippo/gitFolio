@@ -30,7 +30,7 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
           </a>
         </section>
         <div className="hidden items-center gap-8 lg:flex xl:translate-x-16">
-          <PhoneMock hint={t('phoneHint')} />
+          <PhoneMock />
           <h2 className="max-w-[11ch] text-2xl font-bold sm:text-3xl [@media(max-height:700px)]:text-2xl">{t('pocket')}</h2>
         </div>
       </div>

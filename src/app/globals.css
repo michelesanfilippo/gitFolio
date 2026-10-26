@@ -117,7 +117,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 
 .ring-section { display: flex; flex-direction: column; flex: none; }
 
-/* iPhone in CSS (finitura arancio, spessore a strati, retro con fotocamere). Rotazione (dondolio + trascinamento) gestita da JS.
+/* iPhone in CSS (finitura arancio, spessore a strati). Rotazione (dondolio + trascinamento entro pochi gradi) gestita da JS.
    --ph = altezza: una parte dello spazio lasciato da header e carosello. */
 .phone-scene {
   --ph: clamp(220px, calc((100dvh - 4.6rem - var(--stage-h)) * 0.72), 380px);
@@ -139,37 +139,12 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   background: linear-gradient(90deg, #b9541a, #e57a32 20%, #f2a062 50%, #e57a32 80%, #b9541a);
   transform: translateZ(calc(var(--t) * (var(--k) / 11 - .5)));
 }
-.phone, .phone-back { position: absolute; inset: 0; border-radius: var(--r); backface-visibility: hidden; }
+.phone { position: absolute; inset: 0; border-radius: var(--r); backface-visibility: hidden; }
 .phone {
   padding: calc(var(--pw) * 0.022); transform: translateZ(calc(var(--t) / 2));
   background: linear-gradient(140deg, #f9a866 0%, #ee8136 30%, #d9661f 62%, #f29652 100%);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / .25), inset 0 -2px 4px rgb(0 0 0 / .25);
 }
-.phone-back {
-  transform: translateZ(calc(var(--t) / -2)) rotateY(180deg);
-  background: linear-gradient(150deg, #f4a061, #e8772f 45%, #d6661f);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2);
-}
-.phone-cams {                                                                       /* "plateau" fotocamere a tutta larghezza */
-  position: absolute; left: 6%; right: 6%; top: 3.5%; height: 21%; border-radius: calc(var(--pw) * 0.12);
-  background: linear-gradient(160deg, #f6ab6f, #e27530); box-shadow: 0 2px 6px rgb(0 0 0 / .25), inset 0 1px 0 rgb(255 255 255 / .35);
-}
-.phone-lens {
-  position: absolute; width: 20%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle at 40% 38%, #3b4a5c 0 12%, #0b0d10 30% 58%, #2a2d31 62% 70%, #111 74%);
-  box-shadow: 0 0 0 2px #c8611f, 0 2px 4px rgb(0 0 0 / .5);
-}
-.phone-lens-1 { left: 5%; top: 8%; } .phone-lens-2 { left: 5%; bottom: 8%; } .phone-lens-3 { left: 24%; top: 30%; }
-.phone-flash { position: absolute; right: 12%; top: 16%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(#fff6e0, #d9c9a8); }
-.phone-hint {
-  position: absolute; left: 50%; top: calc(100% + var(--ph) * 0.06); transform: translateX(-50%);
-  display: flex; align-items: center; gap: 6px; white-space: nowrap; pointer-events: none;
-  font-size: 12px; font-weight: 500; color: var(--fg-muted);
-  animation: phone-hint 2.4s ease-in-out infinite; transition: opacity .4s;
-}
-.phone-hint svg { color: var(--accent-text); }
-.phone-hint.is-hidden { opacity: 0 !important; animation: none; }
-@keyframes phone-hint { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 .phone-btn { position: absolute; width: 3px; border-radius: 2px; background: linear-gradient(90deg, #c45a19, #f19a55); }
 .phone-btn-action { left: -2px; top: 17%; height: 5%; }
 .phone-btn-vol-up { left: -2px; top: 25%; height: 9%; }
