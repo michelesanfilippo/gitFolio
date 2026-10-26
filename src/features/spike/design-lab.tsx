@@ -1,51 +1,51 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ColorField, Group, Range, Segmented, Select, Toggle } from '@/components/ui/controls';
-import { fontCategories, fonts, availableWeights } from '@/config/fonts';
-import { getPalette, palettes } from '@/config/palettes';
+import { Download, FileText, LayoutTemplate, Palette, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { getPalette } from '@/config/palettes';
 import type { CvDocument, Locale } from '@/core/schema/cv';
 import { sampleCv } from '@/core/schema/sample';
-import { defaultDesign, type DesignSettings, type PaletteColors, type Typography } from '@/core/schema/design';
-import { contrastRatio, isValidHex } from '@/core/theme/contrast';
+import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
+import type { RichText } from '@/core/richtext/ast';
 import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
-import type { RichText } from '@/core/richtext/ast';
-import { RichTextEditor } from '@/features/richtext/rich-text-editor';
-import { PhotoField } from '@/features/photo/photo-field';
+import { ColorsPanel, ContentPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
 import { PdfPreview } from './pdf-preview';
 
-// Laboratorio di Fase 0: valida motore PDF + opzioni di design. Sarà sostituito dall'editor (Fase 1) e tradotto allora.
+// Laboratorio di Fase 0: valida motore PDF + opzioni di design. Sarà sostituito dall'editor (Fase 1).
 
-const COLOR_KEYS: Array<[keyof PaletteColors, string]> = [
-  ['primary', 'Primary'], ['secondary', 'Secondary'], ['accent', 'Accent'], ['heading', 'Headings'],
-  ['text', 'Text'], ['background', 'Background'], ['divider', 'Dividers'], ['badge', 'Badges'],
+type TabId = 'content' | 'photo' | 'layout' | 'colors' | 'text' | 'style';
+const TABS: Array<{ id: TabId; label: string; Icon: LucideIcon }> = [
+  { id: 'content', label: 'Content', Icon: FileText },
+  { id: 'photo', label: 'Photo', Icon: UserRound },
+  { id: 'layout', label: 'Layout', Icon: LayoutTemplate },
+  { id: 'colors', label: 'Colors', Icon: Palette },
+  { id: 'text', label: 'Text', Icon: Type },
+  { id: 'style', label: 'Style', Icon: Sparkles },
 ];
-const fontOptions = fonts.map((f) => ({ value: f.id, label: f.label, group: f.category[0]!.toUpperCase() + f.category.slice(1) }))
-  .sort((a, b) => fontCategories.indexOf(a.group.toLowerCase() as never) - fontCategories.indexOf(b.group.toLowerCase() as never));
 
-const PROFILE_HTML =
-  '<p>Software engineer with <strong>10+ years</strong> of experience. Open to <em>international</em> roles — see my <a href="https://example.com/portfolio">portfolio</a>.</p><ul><li>Led a team of 8</li><li>Cut build times by 45%</li></ul>';
+const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
 
-const longDoc =(doc: CvDocument, copies: number): CvDocument => ({
+const longDoc = (doc: CvDocument, copies: number): CvDocument => ({
   ...doc,
   experience: Array.from({ length: copies }, (_, c) => doc.experience.map((e) => ({ ...e, id: `${e.id}-${c}` }))).flat(),
 });
 
 export function DesignLab() {
-  const [design, setDesign] = useState<DesignSettings>(() => defaultDesign(getPalette('gitfolio'), 'gitfolio'));
+  const [design, setDesign] = useState<DesignSettings>(initialDesign);
+  const [tab, setTab] = useState<TabId>('content');
   const [locale, setLocale] = useState<Locale>('en');
   const [copies, setCopies] = useState(1);
+  const [profile, setProfile] = useState<RichText>();
+  const [photo, setPhoto] = useState<string>();
   const [zoom, setZoom] = useState(1);
   const [buffer, setBuffer] = useState<ArrayBuffer>();
-  const [stats, setStats] = useState<{ ms: number; pages: number; links: number }>();
+  const [renders, setRenders] = useState(0);
   const [text, setText] = useState<string[]>();
   const [showText, setShowText] = useState(false);
   const [error, setError] = useState<string>();
   const renderer = useRef<PdfRenderer>(undefined);
 
-  const [profile, setProfile] = useState<RichText>();
-  const [photo, setPhoto] = useState<string>();
   const doc = useMemo(() => {
     const base = longDoc(sampleCv(locale), copies);
     return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
@@ -63,143 +63,101 @@ export function DesignLab() {
         if (!res) return; // superata da una richiesta più recente
         setError(undefined);
         setBuffer(res.buffer);
-        const pdf = await openPdf(res.buffer);
-        const info = await analyzePdf(pdf);
-        setStats({ ms: res.ms, pages: info.pages, links: info.links });
-        setText(info.text);
-        void pdf.loadingTask.destroy();
+        if (showText) {
+          const pdf = await openPdf(res.buffer);
+          setText((await analyzePdf(pdf)).text);
+          void pdf.loadingTask.destroy();
+        }
+        setRenders((n) => n + 1);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [doc, design]);
+  }, [doc, design, showText]);
 
-  const set = <K extends keyof DesignSettings>(key: K, patch: Partial<DesignSettings[K]>) =>
-    setDesign((d) => ({ ...d, [key]: { ...(d[key] as object), ...patch } }));
-  const setMargin = (side: 'top' | 'right' | 'bottom' | 'left', v: number) => set('page', { margins: { ...design.page.margins, [side]: v } });
-  const setColor = (k: keyof PaletteColors, v: string) => {
-    if (!isValidHex(v)) return setDesign((d) => ({ ...d, colors: { ...d.colors, [k]: v }, paletteId: 'custom' }));
+  const set: SetDesign = (key, patch) => setDesign((d) => ({ ...d, [key]: { ...(d[key] as object), ...patch } }));
+  const setColor = (k: keyof PaletteColors, v: string) =>
     setDesign((d) => ({ ...d, colors: { ...d.colors, [k]: v.toUpperCase() }, paletteId: 'custom' }));
-  };
   const pickPalette = (id: string) => {
     const { id: _id, label: _label, ...colors } = getPalette(id);
     setDesign((d) => ({ ...d, colors, paletteId: id }));
   };
 
-  const t = design.typography;
-  const weights = (id: string, allowed: number[]) => availableWeights(id).filter((w) => allowed.includes(w)).map((w) => ({ value: w, label: String(w) }));
-  const c = design.colors;
-  const warnings = [
-    isValidHex(c.text) && isValidHex(c.background) && contrastRatio(c.text, c.background) < 4.5 && `Text/background contrast ${contrastRatio(c.text, c.background).toFixed(1)}:1 (min 4.5:1)`,
-    isValidHex(c.heading) && isValidHex(c.background) && contrastRatio(c.heading, c.background) < 3 && `Heading/background contrast ${contrastRatio(c.heading, c.background).toFixed(1)}:1 (min 3:1)`,
-    isValidHex(c.secondary) && isValidHex(c.background) && contrastRatio(c.secondary, c.background) < 4.5 && `Secondary/background contrast ${contrastRatio(c.secondary, c.background).toFixed(1)}:1 (min 4.5:1)`,
-  ].filter(Boolean) as string[];
+  const reset = () => {
+    const base = initialDesign();
+    const parts: Partial<Record<TabId, Partial<DesignSettings>>> = {
+      photo: { photo: base.photo }, layout: { page: base.page }, colors: { colors: base.colors, paletteId: base.paletteId },
+      text: { typography: base.typography }, style: { style: base.style },
+    };
+    setDesign((d) => ({ ...d, ...parts[tab] }));
+  };
 
   const download = () => {
     if (!buffer) return;
     const url = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: 'gitfolio-test.pdf' });
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'gitfolio-cv.pdf' });
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const onTabKey = (e: KeyboardEvent) => {
+    const i = TABS.findIndex((t) => t.id === tab);
+    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    const target = TABS[(next + TABS.length) % TABS.length]!;
+    setTab(target.id);
+    document.getElementById(`tab-${target.id}`)?.focus();
+  };
+
   return (
-    <div className="grid h-[calc(100vh-4.5rem)] grid-cols-1 lg:grid-cols-[380px_1fr]">
-      <aside className="overflow-y-auto border-r border-border px-4 pb-8" aria-label="Design controls">
-        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-bg py-3 text-xs">
-          <button type="button" onClick={download} disabled={!buffer} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50">Download PDF</button>
-          <span aria-live="polite" className="text-muted">
-            {error ? <span role="alert" className="text-red-400">Error: {error}</span> : stats ? `${stats.ms} ms · ${stats.pages} pages · ${stats.links} links` : '…'}
-          </span>
-        </div>
-
-        <Group title="Content" open>
-          <Select label="CV language (section labels)" value={locale} onChange={setLocale} options={[
-            { value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' },
-          ]} />
-          <Select label="Sample length" value={copies} onChange={setCopies} options={[{ value: 1, label: 'Short' }, { value: 3, label: 'Medium' }, { value: 8, label: 'Very long' }]} />
-        </Group>
-
-        <Group title="Photo" open>
-          <PhotoField photo={photo} onChange={setPhoto} />
-          <Segmented label="Position (next to name)" value={design.photo.position} onChange={(v) => set('photo', { position: v })} options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'top', label: 'Above' }]} wide />
-          <Segmented label="Shape" value={design.photo.shape} onChange={(v) => set('photo', { shape: v })} options={[{ value: 'circle', label: 'Circle' }, { value: 'rounded', label: 'Rounded' }, { value: 'square', label: 'Square' }]} wide />
-          <Range label="Size" value={design.photo.size} min={48} max={150} unit="pt" onChange={(v) => set('photo', { size: v })} />
-          <Toggle label="Border" checked={design.photo.ring} onChange={(v) => set('photo', { ring: v })} />
-          <p className="col-span-2 text-xs text-muted">The photo stays attached to the name: header alignment (Details &gt; Header alignment) moves both.</p>
-        </Group>
-
-        <Group title="Profile text (rich editor)">
-          <RichTextEditor label="Profile" onChange={setProfile} initialHtml={PROFILE_HTML} />
-        </Group>
-
-        <Group title="Page & layout" open>
-          <Segmented label="Columns" value={design.page.columns} onChange={(v) => set('page', { columns: v })} options={[{ value: 1, label: '1' }, { value: 2, label: '2' }]} />
-          <Segmented label="Sidebar side" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]} />
-          <Range label="Sidebar width" value={design.page.columnRatio} min={22} max={45} unit="%" onChange={(v) => set('page', { columnRatio: v })} />
-          <Toggle label="Sidebar background" checked={design.style.sidebarFill} onChange={(v) => set('style', { sidebarFill: v })} />
-          <Segmented label="Paper" value={design.page.size} onChange={(v) => set('page', { size: v })} options={[{ value: 'A4', label: 'A4' }, { value: 'LETTER', label: 'US Letter' }]} />
-          <Segmented label="Orientation" value={design.page.orientation} onChange={(v) => set('page', { orientation: v })} options={[{ value: 'portrait', label: 'Portrait' }, { value: 'landscape', label: 'Landscape' }]} />
-          {(['top', 'right', 'bottom', 'left'] as const).map((s) => (
-            <Range key={s} label={`Margin ${s}`} value={design.page.margins[s]} min={14} max={90} unit="pt" onChange={(v) => setMargin(s, v)} />
+    <div className="grid h-[calc(100dvh-5.8rem)] grid-cols-1 lg:grid-cols-[420px_1fr]">
+      <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
+        <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="grid shrink-0 grid-cols-6 border-b border-border">
+          {TABS.map(({ id, label, Icon }) => (
+            <button key={id} id={`tab-${id}`} role="tab" type="button" aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1}
+              onClick={() => setTab(id)}
+              className={`flex flex-col items-center gap-1 border-b-2 px-1 py-3 text-[11px] transition-colors ${tab === id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg'}`}>
+              <Icon className={`size-5 ${tab === id ? 'text-accent-text' : ''}`} aria-hidden />
+              {label}
+            </button>
           ))}
-          <Range label="Section spacing" value={design.page.sectionGap} min={4} max={36} unit="pt" onChange={(v) => set('page', { sectionGap: v })} />
-          <Range label="Item spacing" value={design.page.itemGap} min={2} max={28} unit="pt" onChange={(v) => set('page', { itemGap: v })} />
-          <Segmented wide label="Dates" value={design.page.dateStyle} onChange={(v) => set('page', { dateStyle: v })} options={[{ value: 'right', label: 'Right' }, { value: 'inline', label: 'Inline' }, { value: 'below', label: 'Below' }]} />
-        </Group>
-
-        <Group title="Colors" open>
-          <Select wide label="Palette" value={design.paletteId} onChange={pickPalette} options={[
-            ...(design.paletteId === 'custom' ? [{ value: 'custom', label: 'Custom' }] : []),
-            ...palettes.map((p) => ({ value: p.id, label: p.label })),
-          ]} />
-          {COLOR_KEYS.map(([k, label]) => <ColorField key={k} label={label} value={c[k]} onChange={(v) => setColor(k, v)} />)}
-          {warnings.map((w) => <p key={w} role="status" className="col-span-2 rounded-md border border-border bg-surface p-2 text-xs text-amber-400">{w}</p>)}
-        </Group>
-
-        <Group title="Typography" open>
-          <Select wide label="Heading font" value={t.headingFont} onChange={(v) => set('typography', { headingFont: v })} options={fontOptions} />
-          <Select wide label="Body font" value={t.bodyFont} onChange={(v) => set('typography', { bodyFont: v })} options={fontOptions} />
-          <Select label="Heading weight" value={t.headingWeight} onChange={(v) => set('typography', { headingWeight: v as Typography['headingWeight'] })} options={weights(t.headingFont, [400, 500, 600, 700])} />
-          <Select label="Body weight" value={t.bodyWeight} onChange={(v) => set('typography', { bodyWeight: v as Typography['bodyWeight'] })} options={weights(t.bodyFont, [300, 400, 500])} />
-          <Range label="Name size" value={t.nameSize} min={16} max={48} unit="pt" onChange={(v) => set('typography', { nameSize: v })} />
-          <Range label="Heading size" value={t.headingSize} min={9} max={22} unit="pt" onChange={(v) => set('typography', { headingSize: v })} />
-          <Range label="Text size" value={t.bodySize} min={8} max={13} step={0.5} unit="pt" onChange={(v) => set('typography', { bodySize: v })} />
-          <Range label="Line height" value={t.lineHeight} min={1.1} max={1.9} step={0.05} onChange={(v) => set('typography', { lineHeight: v })} />
-          <Range label="Letter spacing" value={t.letterSpacing} min={-0.3} max={1.5} step={0.1} unit="pt" onChange={(v) => set('typography', { letterSpacing: v })} />
-          <Segmented label="Alignment" value={t.align} onChange={(v) => set('typography', { align: v })} options={[{ value: 'left', label: 'Left' }, { value: 'justify', label: 'Justify' }]} />
-          <Toggle label="Uppercase headings" checked={t.uppercaseHeadings} onChange={(v) => set('typography', { uppercaseHeadings: v })} />
-        </Group>
-
-        <Group title="Details">
-          <Select label="Section titles" value={design.style.titleStyle} onChange={(v) => set('style', { titleStyle: v })} options={[
-            { value: 'plain', label: 'Plain' }, { value: 'underline', label: 'Underline' }, { value: 'overline', label: 'Overline' }, { value: 'bar', label: 'Accent bar' }, { value: 'box', label: 'Box' },
-          ]} />
-          <Select label="Item dividers" value={design.style.divider} onChange={(v) => set('style', { divider: v })} options={[
-            { value: 'none', label: 'None' }, { value: 'thin', label: 'Thin' }, { value: 'thick', label: 'Thick' }, { value: 'dotted', label: 'Dotted' }, { value: 'dashed', label: 'Dashed' },
-          ]} />
-          <Select label="Bullets" value={design.style.bullet} onChange={(v) => set('style', { bullet: v })} options={[
-            { value: 'dot', label: 'Dot' }, { value: 'square', label: 'Square' }, { value: 'dash', label: 'Dash' }, { value: 'arrow', label: 'Arrow' }, { value: 'none', label: 'None' },
-          ]} />
-          <Select label="Skills" value={design.style.skillStyle} onChange={(v) => set('style', { skillStyle: v })} options={[
-            { value: 'tags', label: 'Tags' }, { value: 'bars', label: 'Level bars' }, { value: 'list', label: 'List' }, { value: 'inline', label: 'Inline' },
-          ]} />
-          <Segmented wide label="Header alignment" value={design.style.headerAlign} onChange={(v) => set('style', { headerAlign: v })} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} />
-        </Group>
-
-        <div className="py-3">
-          <Toggle label="Show extracted text (what an ATS parser reads)" checked={showText} onChange={setShowText} />
-          {showText && text ? <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-surface p-2 text-xs">{text.map((p, i) => `--- page ${i + 1} ---\n${p}`).join('\n')}</pre> : null}
         </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+          <PanelBody id="content" active={tab === 'content'}>
+            <ContentPanel locale={locale} setLocale={setLocale} copies={copies} setCopies={setCopies} setProfile={setProfile} showText={showText} setShowText={setShowText} text={text} />
+          </PanelBody>
+          <PanelBody id="photo" active={tab === 'photo'}><PhotoPanel design={design} set={set} photo={photo} setPhoto={setPhoto} /></PanelBody>
+          <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} /></PanelBody>
+          <PanelBody id="colors" active={tab === 'colors'}><ColorsPanel design={design} setColor={setColor} pickPalette={pickPalette} /></PanelBody>
+          <PanelBody id="text" active={tab === 'text'}><TextPanel design={design} set={set} /></PanelBody>
+          <PanelBody id="style" active={tab === 'style'}><StylePanel design={design} set={set} /></PanelBody>
+        </div>
+
+        {tab !== 'content' ? (
+          <div className="shrink-0 border-t border-border px-4 py-2.5">
+            <button type="button" onClick={reset} className="flex items-center gap-2 text-xs text-muted hover:text-fg">
+              <RotateCcw className="size-3.5" aria-hidden /> Reset this section to defaults
+            </button>
+          </div>
+        ) : null}
       </aside>
 
-      <section className="flex min-h-0 flex-col bg-black/20" aria-label="Preview">
-        <div className="flex items-center gap-3 border-b border-border px-4 py-2 text-xs">
-          <label className="flex items-center gap-2">Zoom
-            <input type="range" min={0.5} max={1.6} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="accent-[var(--accent)]" />
-            <span className="tabular-nums">{Math.round(zoom * 100)}%</span>
+      <section className="flex min-h-0 flex-col bg-black/20" aria-label="Preview" data-render-count={renders}>
+        <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border px-5 py-3">
+          <label className="flex items-center gap-3 text-sm text-muted">
+            <Search className="size-6 text-accent" aria-hidden />
+            <span className="sr-only">Zoom</span>
+            <input type="range" aria-label="Zoom" min={0.5} max={1.6} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="h-6 w-60 accent-[var(--accent)]" />
+            <span className="w-12 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</span>
           </label>
+          {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
+          <button type="button" onClick={download} disabled={!buffer}
+            className="ml-auto flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
+            <Download className="size-4" aria-hidden /> Download PDF
+          </button>
         </div>
         <div className="min-h-0 flex-1"><PdfPreview buffer={buffer} zoom={zoom} /></div>
       </section>

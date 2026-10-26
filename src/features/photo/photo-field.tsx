@@ -65,9 +65,9 @@ export function PhotoField({ photo, onChange }: { photo: string | undefined; onC
       {error ? <p role="alert" className="text-xs text-red-400">{messages[error]}</p> : null}
       {src ? (
         <div className="grid grid-cols-2 gap-3">
-          <Range label="Zoom" value={zoom} min={1} max={4} step={0.05} onChange={setZoom} unit="x" />
-          <Range label="Horizontal" value={fx} min={-1} max={1} step={0.05} onChange={setFx} />
-          <Range label="Vertical" value={fy} min={-1} max={1} step={0.05} onChange={setFy} />
+          <Range label="Crop zoom" value={zoom} min={1} max={4} step={0.05} onChange={setZoom} unit="x" />
+          <Range label="Move left / right" value={fx} min={-1} max={1} step={0.05} onChange={setFx} />
+          <Range label="Move up / down" value={fy} min={-1} max={1} step={0.05} onChange={setFy} />
         </div>
       ) : null}
       <p className="text-xs text-muted">Processed in your browser. The photo is never uploaded.</p>

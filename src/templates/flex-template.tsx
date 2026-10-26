@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
 import type { CvDocument, DateRange } from '@/core/schema/cv';
 import type { DesignSettings } from '@/core/schema/design';
+import { shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, readableOn } from '@/core/theme/contrast';
 import { formatMonth, labels, type Labels } from './labels';
 
@@ -246,12 +247,13 @@ function Photo({ ctx }: { ctx: Ctx }) {
   const src = ctx.doc.personal.photo;
   if (!src) return null;
   const { size, shape, ring } = ctx.d.photo;
-  const radius = shape === 'circle' ? size / 2 : shape === 'rounded' ? size * 0.14 : 0;
+  const { width, height, radii } = shapeBox(shape, size);
   return (
     <Image
       src={src}
       style={{
-        width: size, height: size, objectFit: 'cover', borderRadius: radius,
+        width, height, objectFit: 'cover',
+        borderTopLeftRadius: radii[0], borderTopRightRadius: radii[1], borderBottomRightRadius: radii[2], borderBottomLeftRadius: radii[3],
         ...(ring ? { borderWidth: 2, borderColor: ctx.d.colors.primary } : {}),
       }}
     />

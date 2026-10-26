@@ -47,11 +47,13 @@ export interface StyleSettings {
   skillStyle: 'list' | 'tags' | 'bars' | 'inline';
 }
 
+import type { PhotoShape } from '../photo/shapes';
+
 export interface PhotoSettings {
   /** Posizione rispetto al nome: la foto è sempre ancorata al blocco nome, si sposta con esso. */
   position: 'left' | 'right' | 'top';
-  shape: 'circle' | 'rounded' | 'square';
-  size: number; // pt
+  shape: PhotoShape;
+  size: number; // pt (altezza)
   ring: boolean; // bordo nel colore primario
 }
 

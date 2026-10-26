@@ -1,0 +1,239 @@
+'use client';
+
+import { useState, type ReactNode } from 'react';
+import { ColorField, Choice, Hint, Range, Section, Segmented, Select, Toggle } from '@/components/ui/controls';
+import { FontPicker } from '@/components/ui/font-picker';
+import { availableWeights } from '@/config/fonts';
+import { palettes } from '@/config/palettes';
+import type { Locale } from '@/core/schema/cv';
+import type { DesignSettings, PaletteColors, Typography } from '@/core/schema/design';
+import { PHOTO_SHAPE_IDS, PHOTO_SHAPES, shapeBox } from '@/core/photo/shapes';
+import { contrastRatio, isValidHex } from '@/core/theme/contrast';
+import { PhotoField } from '@/features/photo/photo-field';
+import { RichTextEditor } from '@/features/richtext/rich-text-editor';
+import type { RichText } from '@/core/richtext/ast';
+import { LOREM_PROFILE_HTML } from '@/core/schema/sample';
+
+export type SetDesign = <K extends keyof DesignSettings>(key: K, patch: Partial<DesignSettings[K]>) => void;
+interface DesignProps { design: DesignSettings; set: SetDesign }
+
+/* ------------------------------ mini anteprime ------------------------------ */
+
+const ShapePreview = ({ id }: { id: (typeof PHOTO_SHAPE_IDS)[number] }) => {
+  const b = shapeBox(id, 30);
+  return <span style={{ width: b.width, height: b.height, background: 'var(--accent)', borderRadius: b.radii.map((r) => `${r}px`).join(' ') }} />;
+};
+
+const TitlePreview = ({ kind }: { kind: DesignSettings['style']['titleStyle'] }) => (
+  <span className="flex w-12 flex-col gap-1">
+    <span className={`flex items-center gap-1 ${kind === 'box' ? 'border-l-2 border-accent bg-border px-1 py-0.5' : ''} ${kind === 'underline' ? 'border-b border-fg pb-0.5' : ''} ${kind === 'overline' ? 'border-t border-fg pt-0.5' : ''}`}>
+      {kind === 'bar' ? <i className="h-2.5 w-0.5 bg-accent" /> : null}
+      <i className="h-1.5 w-6 rounded-sm bg-fg/80" />
+    </span>
+    <i className="h-0.5 w-10 bg-muted/60" /><i className="h-0.5 w-7 bg-muted/60" />
+  </span>
+);
+
+const DividerPreview = ({ kind }: { kind: DesignSettings['style']['divider'] }) =>
+  kind === 'none' ? <span className="text-xs text-muted">Off</span> : (
+    <span className="w-10 text-fg" style={{ borderTop: `${kind === 'thick' ? 2.5 : 1.5}px ${kind === 'dotted' ? 'dotted' : kind === 'dashed' ? 'dashed' : 'solid'} currentColor` }} />
+  );
+
+const BulletPreview = ({ glyph }: { glyph: string }) => <span className="text-lg leading-none text-fg">{glyph}</span>;
+
+const SkillPreview = ({ kind }: { kind: DesignSettings['style']['skillStyle'] }) => {
+  if (kind === 'tags') return <span className="flex flex-wrap justify-center gap-0.5"><i className="h-2.5 w-4 rounded-sm bg-border" /><i className="h-2.5 w-5 rounded-sm bg-border" /><i className="h-2.5 w-3 rounded-sm bg-border" /></span>;
+  if (kind === 'bars') return <span className="flex w-10 flex-col gap-1"><i className="h-1 w-full rounded bg-border"><i className="block h-1 w-8/12 rounded bg-accent" /></i><i className="h-1 w-full rounded bg-border"><i className="block h-1 w-4/12 rounded bg-accent" /></i></span>;
+  if (kind === 'list') return <span className="flex flex-col gap-0.5 text-[9px] leading-none text-fg"><span>• ipsum</span><span>• dolor</span></span>;
+  return <span className="text-[9px] leading-none text-fg">ipsum · dolor</span>;
+};
+
+/* ---------------------------------- pannelli --------------------------------- */
+
+export function ContentPanel(props: {
+  locale: Locale; setLocale: (l: Locale) => void; copies: number; setCopies: (n: number) => void;
+  setProfile: (p: RichText) => void; showText: boolean; setShowText: (v: boolean) => void; text?: string[];
+}) {
+  return (
+    <>
+      <Section title="Sample content" hint="Placeholder text (lorem ipsum) to try the design. In the real editor this is where your CV data goes.">
+        <Select wide label="Language of section titles (Experience, Education…)" value={props.locale} onChange={props.setLocale}
+          options={[{ value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' }]} />
+        <Segmented label="Amount of content" value={props.copies} onChange={props.setCopies}
+          options={[{ value: 1, label: 'Compact' }, { value: 3, label: 'Longer' }, { value: 8, label: 'Stress test' }]} />
+      </Section>
+      <Section title="Profile text" hint="Format with bold, italic, lists and links. Pasting from Word or Google Docs is cleaned automatically.">
+        <div className="col-span-2"><RichTextEditor label="Profile" onChange={props.setProfile} initialHtml={LOREM_PROFILE_HTML} /></div>
+      </Section>
+      <Section title="Recruiter software check" hint="Applicant tracking systems read the text of your PDF. See exactly what they would see.">
+        <Toggle label="Show the text a parser reads" checked={props.showText} onChange={props.setShowText} />
+        {props.showText && props.text ? (
+          <pre className="col-span-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-surface p-3 text-xs">
+            {props.text.map((p, i) => `— page ${i + 1} —\n${p}`).join('\n')}
+          </pre>
+        ) : null}
+      </Section>
+    </>
+  );
+}
+
+export function PhotoPanel({ design, set, photo, setPhoto }: DesignProps & { photo?: string; setPhoto: (p: string | undefined) => void }) {
+  return (
+    <>
+      <Section title="Your photo" hint="Optional. It is cropped and resized on your device and never uploaded.">
+        <PhotoField photo={photo} onChange={setPhoto} />
+      </Section>
+      <Section title="Shape" hint="Pick the frame that fits your style.">
+        <Choice label="Frame" cols={4} value={design.photo.shape} onChange={(v) => set('photo', { shape: v })}
+          options={PHOTO_SHAPE_IDS.map((id) => ({ value: id, label: PHOTO_SHAPES[id].label, preview: <ShapePreview id={id} /> }))} />
+        <Range wide label="Size" value={design.photo.size} min={48} max={150} unit=" pt" onChange={(v) => set('photo', { size: v })} />
+        <Toggle label="Add a border" checked={design.photo.ring} onChange={(v) => set('photo', { ring: v })} />
+      </Section>
+      <Section title="Position" hint="The photo always stays attached to your name: if the name moves, the photo moves with it.">
+        <Segmented label="Photo placement" value={design.photo.position} onChange={(v) => set('photo', { position: v })}
+          options={[{ value: 'left', label: 'Left of name' }, { value: 'right', label: 'Right of name' }, { value: 'top', label: 'Above name' }]} />
+        <Segmented label="Align name and photo" value={design.style.headerAlign} onChange={(v) => set('style', { headerAlign: v })}
+          options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} />
+      </Section>
+    </>
+  );
+}
+
+export function LayoutPanel({ design, set }: DesignProps) {
+  const [perSide, setPerSide] = useState(false);
+  const m = design.page.margins;
+  const uniform = m.top === m.right && m.right === m.bottom && m.bottom === m.left;
+  const setMargin = (side: keyof typeof m, v: number) => set('page', { margins: { ...m, [side]: v } });
+  return (
+    <>
+      <Section title="Page">
+        <Segmented label="Paper size" value={design.page.size} onChange={(v) => set('page', { size: v })} options={[{ value: 'A4', label: 'A4' }, { value: 'LETTER', label: 'US Letter' }]} />
+        <Segmented label="Orientation" value={design.page.orientation} onChange={(v) => set('page', { orientation: v })} options={[{ value: 'portrait', label: 'Portrait' }, { value: 'landscape', label: 'Landscape' }]} />
+        {perSide ? (['top', 'right', 'bottom', 'left'] as const).map((s) => (
+          <Range key={s} label={`Margin ${s}`} value={m[s]} min={14} max={90} unit=" pt" onChange={(v) => setMargin(s, v)} />
+        )) : (
+          <Range wide label={uniform ? 'Margins' : 'Margins (mixed — move to reset all)'} value={m.top} min={14} max={90} unit=" pt"
+            onChange={(v) => set('page', { margins: { top: v, right: v, bottom: v, left: v } })} />
+        )}
+        <Toggle label="Set each margin separately" checked={perSide} onChange={setPerSide} />
+      </Section>
+      <Section title="Columns" hint="Two columns put contacts and skills in a side column.">
+        <Segmented label="Number of columns" value={design.page.columns} onChange={(v) => set('page', { columns: v })} options={[{ value: 1, label: 'One' }, { value: 2, label: 'Two' }]} />
+        {design.page.columns === 2 ? (
+          <>
+            <Segmented label="Side column" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'On the left' }, { value: 'right', label: 'On the right' }]} />
+            <Range wide label="Side column width" value={design.page.columnRatio} min={22} max={45} unit="%" onChange={(v) => set('page', { columnRatio: v })} />
+            <Toggle label="Colored background for the side column" checked={design.style.sidebarFill} onChange={(v) => set('style', { sidebarFill: v })} />
+          </>
+        ) : null}
+      </Section>
+      <Section title="Spacing">
+        <Range wide label="Space between sections" value={design.page.sectionGap} min={4} max={36} unit=" pt" onChange={(v) => set('page', { sectionGap: v })} />
+        <Range wide label="Space between entries" value={design.page.itemGap} min={2} max={28} unit=" pt" onChange={(v) => set('page', { itemGap: v })} />
+        <Segmented label="Dates" value={design.page.dateStyle} onChange={(v) => set('page', { dateStyle: v })} options={[{ value: 'right', label: 'On the right' }, { value: 'inline', label: 'Next to title' }, { value: 'below', label: 'Below' }]} />
+      </Section>
+    </>
+  );
+}
+
+const COLOR_KEYS: Array<[keyof PaletteColors, string]> = [
+  ['primary', 'Main color'], ['secondary', 'Secondary text'], ['accent', 'Accent'], ['heading', 'Headings'],
+  ['text', 'Body text'], ['background', 'Page background'], ['divider', 'Lines'], ['badge', 'Tags & boxes'],
+];
+
+export function ColorsPanel({ design, setColor, pickPalette }: { design: DesignSettings; setColor: (k: keyof PaletteColors, v: string) => void; pickPalette: (id: string) => void }) {
+  const c = design.colors;
+  const check = (fg: string, bg: string, min: number, msg: string) =>
+    isValidHex(fg) && isValidHex(bg) && contrastRatio(fg, bg) < min ? `${msg} is hard to read (${contrastRatio(fg, bg).toFixed(1)}:1, aim for ${min}:1 or more).` : null;
+  const warnings = [
+    check(c.text, c.background, 4.5, 'Body text'),
+    check(c.heading, c.background, 3, 'Headings'),
+    check(c.secondary, c.background, 4.5, 'Secondary text'),
+  ].filter(Boolean) as string[];
+  return (
+    <>
+      <Section title="Color palette" hint="One click changes the whole CV. Fine-tune any color below.">
+        <div className="col-span-2 grid grid-cols-3 gap-2" role="group" aria-label="Palettes">
+          {palettes.map((p) => {
+            const on = design.paletteId === p.id;
+            return (
+              <button key={p.id} type="button" aria-pressed={on} onClick={() => pickPalette(p.id)} title={p.label}
+                className={`flex flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-colors ${on ? 'border-accent ring-1 ring-accent' : 'border-border hover:border-muted'}`}>
+                <span className="flex h-11 items-end gap-0.5 rounded-md p-1.5" style={{ background: p.background, border: `1px solid ${p.divider}` }}>
+                  <i className="block h-5 w-2.5 rounded-sm" style={{ background: p.primary }} />
+                  <i className="block h-3 w-2.5 rounded-sm" style={{ background: p.accent }} />
+                  <i className="block h-4 w-2.5 rounded-sm" style={{ background: p.secondary }} />
+                  <i className="ml-auto block h-2 w-3.5 rounded-sm" style={{ background: p.badge, border: `1px solid ${p.divider}` }} />
+                </span>
+                <span className={`truncate px-0.5 text-[11px] ${on ? 'font-semibold text-fg' : 'text-muted'}`}>{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {design.paletteId === 'custom' ? <Hint>Custom palette in use. Pick one above to go back to a preset.</Hint> : null}
+      </Section>
+      <Section title="Customize colors" hint="Type a HEX code or use the color picker.">
+        {COLOR_KEYS.map(([k, label]) => <ColorField key={k} label={label} value={c[k]} onChange={(v) => setColor(k, v)} />)}
+        {warnings.map((w) => <p key={w} role="status" className="col-span-2 rounded-md border border-amber-400/40 bg-amber-400/10 p-2.5 text-xs text-amber-300">{w}</p>)}
+      </Section>
+    </>
+  );
+}
+
+export function TextPanel({ design, set }: DesignProps) {
+  const t = design.typography;
+  const weights = (id: string, allowed: number[]) => availableWeights(id).filter((w) => allowed.includes(w)).map((w) => ({ value: w, label: String(w) }));
+  const weightName: Record<number, string> = { 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'Semibold', 700: 'Bold' };
+  const named = (o: Array<{ value: number; label: string }>) => o.map((x) => ({ ...x, label: `${weightName[x.value] ?? ''} (${x.label})` }));
+  return (
+    <>
+      <Section title="Fonts" hint="45 free fonts. Names are shown in their own typeface.">
+        <FontPicker label="Headings & name" value={t.headingFont} onChange={(v) => set('typography', { headingFont: v })} />
+        <FontPicker label="Body text" value={t.bodyFont} onChange={(v) => set('typography', { bodyFont: v })} />
+        <Select label="Heading weight" value={t.headingWeight} onChange={(v) => set('typography', { headingWeight: v as Typography['headingWeight'] })} options={named(weights(t.headingFont, [400, 500, 600, 700]))} />
+        <Select label="Body weight" value={t.bodyWeight} onChange={(v) => set('typography', { bodyWeight: v as Typography['bodyWeight'] })} options={named(weights(t.bodyFont, [300, 400, 500]))} />
+      </Section>
+      <Section title="Sizes">
+        <Range wide label="Your name" value={t.nameSize} min={16} max={48} unit=" pt" onChange={(v) => set('typography', { nameSize: v })} />
+        <Range wide label="Section titles" value={t.headingSize} min={9} max={22} unit=" pt" onChange={(v) => set('typography', { headingSize: v })} />
+        <Range wide label="Body text" value={t.bodySize} min={8} max={13} step={0.5} unit=" pt" onChange={(v) => set('typography', { bodySize: v })} />
+      </Section>
+      <Section title="Spacing & alignment">
+        <Range wide label="Line spacing" value={t.lineHeight} min={1.1} max={1.9} step={0.05} onChange={(v) => set('typography', { lineHeight: v })} />
+        <Range wide label="Letter spacing" value={t.letterSpacing} min={-0.3} max={1.5} step={0.1} unit=" pt" onChange={(v) => set('typography', { letterSpacing: v })} />
+        <Segmented label="Text alignment" value={t.align} onChange={(v) => set('typography', { align: v })} options={[{ value: 'left', label: 'Left' }, { value: 'justify', label: 'Justified' }]} />
+        <Toggle label="UPPERCASE section titles" checked={t.uppercaseHeadings} onChange={(v) => set('typography', { uppercaseHeadings: v })} />
+      </Section>
+    </>
+  );
+}
+
+export function StylePanel({ design, set }: DesignProps) {
+  const s = design.style;
+  return (
+    <>
+      <Section title="Section titles">
+        <Choice label="Title style" cols={5} value={s.titleStyle} onChange={(v) => set('style', { titleStyle: v })}
+          options={(['plain', 'underline', 'overline', 'bar', 'box'] as const).map((k) => ({ value: k, label: { plain: 'Plain', underline: 'Underline', overline: 'Overline', bar: 'Bar', box: 'Box' }[k], preview: <TitlePreview kind={k} /> }))} />
+      </Section>
+      <Section title="Lines between entries">
+        <Choice label="Divider" cols={5} value={s.divider} onChange={(v) => set('style', { divider: v })}
+          options={(['none', 'thin', 'thick', 'dotted', 'dashed'] as const).map((k) => ({ value: k, label: { none: 'None', thin: 'Thin', thick: 'Thick', dotted: 'Dotted', dashed: 'Dashed' }[k], preview: <DividerPreview kind={k} /> }))} />
+      </Section>
+      <Section title="Lists">
+        <Choice label="Bullet style" cols={5} value={s.bullet} onChange={(v) => set('style', { bullet: v })}
+          options={[{ value: 'dot', label: 'Dot', g: '•' }, { value: 'square', label: 'Square', g: '■' }, { value: 'dash', label: 'Dash', g: '–' }, { value: 'arrow', label: 'Arrow', g: '›' }, { value: 'none', label: 'None', g: '∅' }]
+            .map((o) => ({ value: o.value as typeof s.bullet, label: o.label, preview: <BulletPreview glyph={o.g} /> }))} />
+      </Section>
+      <Section title="Skills">
+        <Choice label="Show skills as" cols={4} value={s.skillStyle} onChange={(v) => set('style', { skillStyle: v })}
+          options={(['tags', 'bars', 'list', 'inline'] as const).map((k) => ({ value: k, label: { tags: 'Tags', bars: 'Level bars', list: 'List', inline: 'Inline' }[k], preview: <SkillPreview kind={k} /> }))} />
+      </Section>
+    </>
+  );
+}
+
+export function PanelBody({ active, id, children }: { active: boolean; id: string; children: ReactNode }) {
+  // Tutti i pannelli restano montati (stato dell'editor e della foto conservato): si nascondono soltanto.
+  return <div role="tabpanel" id={`panel-${id}`} aria-labelledby={`tab-${id}`} hidden={!active} className="px-4 pb-6">{children}</div>;
+}
