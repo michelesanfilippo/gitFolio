@@ -1,48 +1,145 @@
+'use client';
+
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { withBasePath } from '@/config/brand';
 import { presets } from '@/config/presets';
 
-const HOLD = 0.8; // quota di ogni passo in cui la card in primo piano resta ferma
-
-/** Keyframes dell'anello: ogni passo ruota di 360/N gradi, poi si ferma. Generati da N, quindi seguono il numero di template. */
-function ringKeyframes(n: number): string {
-  const step = 100 / n;
-  const at = (deg: number) => `transform: translateZ(calc(var(--ring-r) * -0.4)) rotateY(${deg}deg);`;
-  const frames: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = -(360 / n) * i;
-    const start = (step * i).toFixed(3);
-    const holdEnd = (step * i + step * HOLD).toFixed(3);
-    frames.push(`${start}%{${at(a)}animation-timing-function:cubic-bezier(.55,0,.2,1)}${holdEnd}%{${at(a)}}`);
-  }
-  frames.push(`100%{${at(-360)}}`);
-  return `@keyframes ring-step{${frames.join('')}}`;
-}
+const STEP_MS = 3000;          // pausa tra un avanzamento automatico e il successivo
+const PX_PER_CARD = 150;       // trascinando il mouse/dito di tanti px l'anello avanza di una card
+const IDLE_RESUME_MS = 3500;   // dopo un gesto manuale l'autoplay riprende dopo questo tempo
+const CLICK_SLOP = 6;          // sotto questa distanza un gesto è un clic, non un trascinamento
+const SLICES = 9;              // fette verticali per card: la card segue la curva dell'anello (effetto "bendable")
+const INERTIA_S = 0.35;        // quanto lontano porta lo slancio del rilascio (secondi di velocità residua)
 
 /**
- * Carosello 3D: i template sono disposti su un anello che ruota a passi, con la card in primo piano ferma per qualche secondo.
- * Solo CSS 3D (nessuna libreria). Il mouse sopra NON ferma la rotazione; si ferma solo quando un template riceve il focus
- * (clic o tastiera). Con "riduci movimento" diventa una fila piatta scorrevole a mano.
+ * Carosello 3D: i template sono su un anello inclinato (profondità) che avanza da solo card per card.
+ * A mano: trascina col mouse/dito, frecce a lato, tasti ←/→, oppure clicca una card laterale per portarla davanti
+ * (cliccando quella davanti si apre l'editor). Il mouse sopra NON ferma l'avanzamento; si ferma solo col focus da tastiera
+ * o durante un gesto. Con "riduci movimento" è una fila piatta scorrevole.
  */
 export function TemplateCarousel({ locale, label }: { locale: string; label: string }) {
   const n = presets.length;
   const angle = 360 / n;
+  const [pos, setPos] = useState(0);            // posizione in "card" (frazionaria durante il trascinamento)
+  const [dragging, setDragging] = useState(false);
+  const paused = useRef(false);                 // focus da tastiera
+  const lastTouch = useRef(0);                  // ultimo gesto manuale
+  const drag = useRef({ x: 0, start: 0, moved: 0, id: -1 });
+  const justDragged = useRef(false);
+  const samples = useRef<Array<{ t: number; p: number }>>([]); // ultime posizioni per stimare la velocità
+  const [glide, setGlide] = useState(650);        // durata dell'animazione di aggancio (più lunga dopo uno slancio)
+  const reduce = useRef(false);
+
+  const front = ((Math.round(pos) % n) + n) % n;
+
+  useEffect(() => {
+    reduce.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce.current) return;
+    const id = window.setInterval(() => {
+      if (paused.current || document.hidden || drag.current.id !== -1) return;
+      if (Date.now() - lastTouch.current < IDLE_RESUME_MS) return;
+      setPos((p) => Math.round(p) + 1);
+    }, STEP_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const go = useCallback((delta: number) => {
+    lastTouch.current = Date.now();
+    setPos((p) => Math.round(p) + delta);
+  }, []);
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag.current = { x: e.clientX, start: pos, moved: 0, id: e.pointerId };
+    justDragged.current = false;
+    samples.current = [];
+    setGlide(650);
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d.id !== e.pointerId) return;
+    const dx = e.clientX - d.x;
+    d.moved = Math.max(d.moved, Math.abs(dx));
+    if (d.moved > CLICK_SLOP) {
+      if (!dragging) { setDragging(true); e.currentTarget.setPointerCapture(e.pointerId); }
+      lastTouch.current = Date.now();
+      const np = d.start - dx / PX_PER_CARD; // trascinando a destra le card di sinistra passano davanti
+      setPos(np);
+      const now = performance.now();
+      samples.current = [...samples.current.filter((x) => now - x.t < 120), { t: now, p: np }];
+    }
+  };
+  const endDrag = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d.id !== e.pointerId) return;
+    drag.current = { ...d, id: -1 };
+    if (d.moved > CLICK_SLOP) {
+      justDragged.current = true; // il clic che segue il rilascio non deve aprire l'editor
+      window.setTimeout(() => { justDragged.current = false; }, 0);
+      lastTouch.current = Date.now();
+      // slancio: velocità (card/s) degli ultimi ~100 ms, proiettata in avanti e poi agganciata alla card più vicina
+      const sm = samples.current;
+      const a = sm[0], z = sm[sm.length - 1];
+      const stale = !z || performance.now() - z.t > 90; // fermo prima di rilasciare: nessuno slancio
+      const v = !stale && a && z && z.t > a.t ? ((z.p - a.p) / (z.t - a.t)) * 1000 : 0;
+      const carry = Math.max(-3, Math.min(3, v * INERTIA_S));
+      setGlide(650 + Math.min(700, Math.abs(carry) * 260));
+      setPos((p) => Math.round(p + carry));
+    }
+    setDragging(false);
+  };
+
+  /** Card davanti: apre l'editor. Card laterale: la porta davanti. */
+  const onCardClick = (e: React.MouseEvent, i: number) => {
+    if (justDragged.current) return e.preventDefault();
+    if (i === front) return;
+    e.preventDefault();
+    lastTouch.current = Date.now();
+    const base = Math.round(pos);
+    let delta = (((i - front) % n) + n) % n;
+    if (delta > n / 2) delta -= n;
+    setPos(base + delta);
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
+  };
+
   return (
-    <section aria-label={label} className="ring-section border-t border-border bg-bg py-8">
-      <style>{ringKeyframes(n)}</style>
-      <div className="ring-stage" style={{ ['--n' as string]: n }}>
-        <ul className="ring" style={{ animationDuration: `${n * 3.6}s` }}>
-          {presets.map((p, i) => (
-            <li key={p.id} className="ring-card" style={{ ['--a' as string]: `${i * angle}deg` }}>
-              <a href={withBasePath(`/${locale}/editor/?preset=${p.id}`)} title={p.blurb} className="group block rounded-xl focus-visible:outline-offset-4">
-                <span className="block overflow-hidden rounded-xl border border-border bg-surface shadow-xl shadow-black/40 transition-colors group-hover:border-accent group-focus-visible:border-accent">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={withBasePath(`/templates/${p.id}.webp`)} alt={`${p.name} CV template preview`} width={640} height={905} loading="lazy" className="block h-auto w-full" />
-                </span>
-                <span className="mt-2 block text-center text-xs font-semibold text-fg group-hover:text-accent-text">{p.name}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+    <section aria-label={label} className="ring-section border-t border-border bg-bg pb-6 pt-8" onKeyDown={onKeyDown}
+      onFocusCapture={(e) => { if ((e.target as HTMLElement).matches(':focus-visible')) paused.current = true; }}
+      onBlurCapture={() => { paused.current = false; }}>
+      <div className="ring-stage" style={{ ['--n' as string]: n, touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+        <div className="ring-tilt">
+          <ul className="ring-track" style={{ transform: `translateZ(calc(var(--ring-r) * -0.4)) rotateY(${-pos * angle}deg)`, transition: dragging ? 'none' : `transform ${glide}ms cubic-bezier(.22,.8,.25,1)` }}>
+            {presets.map((p, i) => (
+              <li key={p.id} className="ring-card" style={{ ['--a' as string]: `${i * angle}deg` }} aria-current={i === front ? 'true' : undefined}>
+                <a href={withBasePath(`/${locale}/editor/?preset=${p.id}`)} title={p.blurb} draggable={false} aria-label={`${p.name} CV template`} onClick={(e) => onCardClick(e, i)}
+                  className="ring-link">
+                  {Array.from({ length: SLICES }, (_, j) => (
+                    <span key={j} aria-hidden className="ring-slice" style={{ ['--j' as string]: j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
+                  ))}
+                  <span aria-hidden className="ring-label">{p.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="ring-controls mt-1 flex items-center justify-center gap-4">
+        <button type="button" onClick={() => go(-1)} aria-label="Previous template"
+          className="grid size-10 place-items-center rounded-full border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg">
+          <ChevronLeft className="size-5" aria-hidden />
+        </button>
+        <span className="min-w-28 text-center text-sm text-muted" aria-live="polite">{presets[front]?.name}</span>
+        <button type="button" onClick={() => go(1)} aria-label="Next template"
+          className="grid size-10 place-items-center rounded-full border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg">
+          <ChevronRight className="size-5" aria-hidden />
+        </button>
       </div>
     </section>
   );

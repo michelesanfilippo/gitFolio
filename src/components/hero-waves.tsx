@@ -7,11 +7,11 @@ interface Wave { y: number; amp: number; cycles: number; phase: number; width: n
 
 // Fasce da 100 unità con ampiezza massima 30: distanza minima tra due onde = 100 - 2*30 = 40 > 0.
 const WAVES: Wave[] = [
-  { y: 70, amp: 24, cycles: 2.2, phase: 0.4, width: 1.6, opacity: 0.16 },
-  { y: 170, amp: 30, cycles: 1.6, phase: 2.1, width: 1.4, opacity: 0.12 },
-  { y: 270, amp: 22, cycles: 2.8, phase: 4.0, width: 1.8, opacity: 0.18 },
-  { y: 370, amp: 30, cycles: 1.9, phase: 1.2, width: 1.4, opacity: 0.12 },
-  { y: 470, amp: 25, cycles: 2.4, phase: 3.3, width: 1.6, opacity: 0.16 },
+  { y: 70, amp: 24, cycles: 2.2, phase: 0.4, width: 1.6, opacity: 0.085 },
+  { y: 170, amp: 30, cycles: 1.6, phase: 2.1, width: 1.4, opacity: 0.06 },
+  { y: 270, amp: 22, cycles: 2.8, phase: 4.0, width: 1.8, opacity: 0.095 },
+  { y: 370, amp: 30, cycles: 1.9, phase: 1.2, width: 1.4, opacity: 0.06 },
+  { y: 470, amp: 25, cycles: 2.4, phase: 3.3, width: 1.6, opacity: 0.085 },
 ];
 
 /** Curva liscia: quadratiche che passano per i punti medi di una polilinea campionata. */
