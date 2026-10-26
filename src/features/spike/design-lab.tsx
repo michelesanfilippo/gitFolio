@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileText, LayoutTemplate, Palette, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
+import { Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
 import type { Locale } from '@/core/schema/cv';
@@ -23,6 +23,11 @@ const TABS: Array<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: 'text', label: 'Text', Icon: Type },
   { id: 'style', label: 'Style', Icon: Sparkles },
 ];
+
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 1.2;
+const ZOOM_STEP = 0.1;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10));
 
 const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
 
@@ -141,12 +146,21 @@ export function DesignLab() {
 
       <section className="flex min-h-0 flex-col bg-black/20" aria-label="Preview" data-render-count={renders}>
         <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border px-5 py-3">
-          <label className="flex items-center gap-3 text-sm text-muted">
+          <div className="flex items-center gap-3 text-sm text-muted">
             <Search className="size-6 text-accent" aria-hidden />
-            <span className="sr-only">Zoom</span>
-            <input type="range" aria-label="Zoom" min={0.5} max={1.6} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="h-6 w-60 accent-[var(--accent)]" />
-            <span className="w-12 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</span>
-          </label>
+            <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 w-52 accent-[var(--accent)]" />
+            <output aria-live="off" className="w-12 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
+            <span className="flex gap-1.5">
+              <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
+                className="grid size-9 place-items-center rounded-lg border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-accent">
+                <Minus className="size-5" aria-hidden />
+              </button>
+              <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
+                className="grid size-9 place-items-center rounded-lg border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-accent">
+                <Plus className="size-5" aria-hidden />
+              </button>
+            </span>
+          </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
           <button type="button" onClick={download} disabled={!buffer}
             className="ml-auto flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">

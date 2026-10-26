@@ -1,5 +1,4 @@
 import { Document, Image, Link, Page, Text, View } from '@react-pdf/renderer';
-import { Fragment } from 'react';
 import type { Styles } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
@@ -393,9 +392,10 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
   const sideIds = new Set(page.sidebarSections);
   const twoCol = page.columns === 2 && sideIds.size > 0;
   const contactsInSide = twoCol && sideIds.has('contacts');
+  const offset = (id: SectionId) => (twoCol && sideIds.has(id) ? Math.max(0, page.sidebarOffsets[id] ?? 0) : 0);
   const pick = (inSide: boolean) =>
     SECTION_ORDER.filter((id) => id !== 'contacts' && (twoCol ? sideIds.has(id) === inSide : !inSide) && built[id])
-      .map((id) => <Fragment key={id}>{built[id]}</Fragment>);
+      .map((id) => <View key={id} style={offset(id) ? { marginTop: offset(id) } : undefined}>{built[id]}</View>);
   const main = pick(false);
   const side = pick(true);
 
@@ -407,7 +407,7 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
 
   const sidebar = (
     <View style={{ width: sideW, ...(card ? { backgroundColor: colors.badge, borderRadius: 6, padding: 10, alignSelf: 'flex-start' } : {}) }}>
-      {contactsInSide ? <Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section> : null}
+      {contactsInSide ? <View style={offset('contacts') ? { marginTop: offset('contacts') } : undefined}><Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section></View> : null}
       {side}
     </View>
   );

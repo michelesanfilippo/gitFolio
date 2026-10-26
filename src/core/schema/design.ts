@@ -41,6 +41,8 @@ export interface PageSettings {
   sidebarSide: 'left' | 'right';
   /** Sezioni mostrate nella colonna laterale (le altre restano nella colonna principale). */
   sidebarSections: SectionId[];
+  /** Spazio sopra ogni sezione della colonna laterale (pt): permette di abbassarla rispetto alle altre. */
+  sidebarOffsets: Partial<Record<SectionId, number>>;
   /** Altezza dello sfondo della colonna laterale: pagina intera, quanto il contenuto, oppure % della pagina (solo prima pagina). */
   sidebarHeight: 'full' | 'content' | 'custom';
   sidebarHeightPct: number;
@@ -90,7 +92,7 @@ export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignS
     size: 'A4', orientation: 'portrait',
     margins: { top: 40, right: 40, bottom: 40, left: 40 },
     sectionGap: 14, itemGap: 8, columns: 1, columnRatio: 32, sidebarSide: 'left', dateStyle: 'right',
-    sidebarSections: ['contacts', 'skills', 'languages', 'certifications'], sidebarHeight: 'full', sidebarHeightPct: 60,
+    sidebarSections: ['contacts', 'skills', 'languages', 'certifications'], sidebarOffsets: {}, sidebarHeight: 'full', sidebarHeightPct: 60,
   },
   photo: { position: 'left', shape: 'circle', size: 84, borderWidth: 0, borderColor: '' },
   style: { titleStyle: 'underline', divider: 'thin', bullet: 'dot', headerAlign: 'left', sidebarFill: false, skillStyle: 'tags' },

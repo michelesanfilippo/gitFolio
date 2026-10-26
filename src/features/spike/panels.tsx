@@ -53,8 +53,10 @@ const SECTION_LABELS: Record<SectionId, string> = {
   projects: 'Projects', skills: 'Skills', languages: 'Languages', certifications: 'Certifications',
 };
 
-/** Per ogni sezione: colonna principale o laterale. */
-function AssignList({ value, onChange }: { value: SectionId[]; onChange: (v: SectionId[]) => void }) {
+/** Per ogni sezione: colonna principale o laterale; se laterale, quanto abbassarla rispetto alla precedente. */
+function AssignList({ value, offsets, onChange, onOffset }: {
+  value: SectionId[]; offsets: Partial<Record<SectionId, number>>; onChange: (v: SectionId[]) => void; onOffset: (id: SectionId, v: number) => void;
+}) {
   const side = new Set(value);
   const put = (id: SectionId, toSide: boolean) => {
     const next = new Set(side);
@@ -66,19 +68,27 @@ function AssignList({ value, onChange }: { value: SectionId[]; onChange: (v: Sec
       <legend className="mb-1.5 text-xs text-muted">What goes in the side column</legend>
       <ul className="divide-y divide-border rounded-lg border border-border">
         {SECTION_ORDER.map((id) => (
-          <li key={id} role="group" aria-label={SECTION_LABELS[id]} className="flex items-center justify-between gap-2 px-3 py-1.5">
-            <span className="text-sm text-fg">{SECTION_LABELS[id]}</span>
-            <span className="flex overflow-hidden rounded-md border border-border">
-              {[{ side: false, label: 'Main' }, { side: true, label: 'Side' }].map((o) => (
-                <button key={o.label} type="button" aria-pressed={side.has(id) === o.side} onClick={() => put(id, o.side)}
-                  className={`px-3 py-1 text-xs ${side.has(id) === o.side ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border'}`}>
-                  {o.label}
-                </button>
-              ))}
-            </span>
+          <li key={id} className="px-3 py-1.5">
+            <div role="group" aria-label={SECTION_LABELS[id]} className="flex items-center justify-between gap-2">
+              <span className="text-sm text-fg">{SECTION_LABELS[id]}</span>
+              <span className="flex overflow-hidden rounded-md border border-border">
+                {[{ side: false, label: 'Main' }, { side: true, label: 'Side' }].map((o) => (
+                  <button key={o.label} type="button" aria-pressed={side.has(id) === o.side} onClick={() => put(id, o.side)}
+                    className={`px-3 py-1 text-xs ${side.has(id) === o.side ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border'}`}>
+                    {o.label}
+                  </button>
+                ))}
+              </span>
+            </div>
+            {side.has(id) ? (
+              <div className="mt-1 grid">
+                <Range label={`Move ${SECTION_LABELS[id]} down`} value={offsets[id] ?? 0} min={0} max={300} step={5} unit=" pt" onChange={(v) => onOffset(id, v)} />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
+      <p className="mt-1.5 text-xs text-muted">Each side-column block can sit lower than the one above it: raise the value to push it down the page.</p>
       {value.length === 0 ? <p className="mt-1.5 text-xs text-amber-300">Nothing selected: the CV stays on a single column.</p> : null}
     </fieldset>
   );
@@ -165,7 +175,7 @@ export function LayoutPanel({ design, set }: DesignProps) {
           <>
             <Segmented label="Side column position" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'On the left' }, { value: 'right', label: 'On the right' }]} />
             <Range wide label="Side column width" value={design.page.columnRatio} min={22} max={45} unit="%" onChange={(v) => set('page', { columnRatio: v })} />
-            <AssignList value={design.page.sidebarSections} onChange={(v) => set('page', { sidebarSections: v })} />
+            <AssignList value={design.page.sidebarSections} offsets={design.page.sidebarOffsets} onChange={(v) => set('page', { sidebarSections: v })} onOffset={(id, v) => set('page', { sidebarOffsets: { ...design.page.sidebarOffsets, [id]: v } })} />
             <Toggle label="Colored background for the side column" checked={design.style.sidebarFill} onChange={(v) => set('style', { sidebarFill: v })} />
             {design.style.sidebarFill ? (
               <>
