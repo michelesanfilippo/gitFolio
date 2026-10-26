@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f7f8f6; --surface: #ffffff; --border: #e4e7e2;
+  --fg: #171918; --fg-muted: #5b615c;
+  --accent: #c6f36b; --accent-fg: #171918; --accent-text: #3f6212; --focus: #171918;
+}
+.dark {
+  --bg: #171918; --surface: #1e2120; --border: #2b2f2d;
+  --fg: #f2f2ee; --fg-muted: #a3a9a4;
+  --accent: #c6f36b; --accent-fg: #171918; --accent-text: #c6f36b; --focus: #c6f36b;
+}
+
+@theme inline {
+  --color-bg: var(--bg); --color-surface: var(--surface); --color-border: var(--border);
+  --color-fg: var(--fg); --color-muted: var(--fg-muted);
+  --color-accent: var(--accent); --color-accent-fg: var(--accent-fg); --color-accent-text: var(--accent-text);
+}
+
+body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

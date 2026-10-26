@@ -1,0 +1,4 @@
+allowBuilds:
+  esbuild: true
+  "@swc/core": true
+  "@parcel/watcher": true

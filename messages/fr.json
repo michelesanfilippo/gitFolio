@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "gitFolio — Créateur de CV gratuit et open source",
+    "description": "Créez des CV professionnels gratuitement. Sans filigrane, sans abonnement, sans inscription. Vos données restent dans votre navigateur."
+  },
+  "common": {
+    "language": "Langue",
+    "theme": "Thème",
+    "github": "GitHub"
+  },
+  "home": {
+    "tagline": "Créateur de CV gratuit et open source",
+    "title": "Créez un CV professionnel. Gratuit. Sans piège.",
+    "subtitle": "Sans filigrane, sans abonnement, sans compte. Vos données ne quittent jamais votre navigateur.",
+    "cta": "Créer mon CV",
+    "soon": "L'éditeur est en construction.",
+    "spike": "Test du moteur PDF"
+  }
+}

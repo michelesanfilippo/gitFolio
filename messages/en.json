@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "gitFolio — Free & open source CV builder",
+    "description": "Create professional CVs for free. No watermark, no paywall, no sign-up. Your data stays in your browser."
+  },
+  "common": {
+    "language": "Language",
+    "theme": "Theme",
+    "github": "GitHub"
+  },
+  "home": {
+    "tagline": "Free & open source CV builder",
+    "title": "Build a professional CV. Free. No catch.",
+    "subtitle": "No watermark, no paywall, no account. Your data never leaves your browser.",
+    "cta": "Create your CV",
+    "soon": "The editor is under construction.",
+    "spike": "PDF engine test"
+  }
+}

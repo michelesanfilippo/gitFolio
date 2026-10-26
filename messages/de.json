@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "gitFolio — Kostenloser Open-Source-Lebenslauf-Generator",
+    "description": "Erstellen Sie professionelle Lebensläufe kostenlos. Kein Wasserzeichen, keine Bezahlschranke, keine Registrierung. Ihre Daten bleiben in Ihrem Browser."
+  },
+  "common": {
+    "language": "Sprache",
+    "theme": "Design",
+    "github": "GitHub"
+  },
+  "home": {
+    "tagline": "Kostenloser Open-Source-Lebenslauf-Generator",
+    "title": "Erstellen Sie einen professionellen Lebenslauf. Kostenlos. Ohne Haken.",
+    "subtitle": "Kein Wasserzeichen, keine Bezahlschranke, kein Konto. Ihre Daten verlassen nie Ihren Browser.",
+    "cta": "Lebenslauf erstellen",
+    "soon": "Der Editor ist in Arbeit.",
+    "spike": "PDF-Engine-Test"
+  }
+}

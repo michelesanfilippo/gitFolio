@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "gitFolio — Generatore di CV gratuito e open source",
+    "description": "Crea CV professionali gratis. Nessun watermark, nessun paywall, nessuna registrazione. I tuoi dati restano nel browser."
+  },
+  "common": {
+    "language": "Lingua",
+    "theme": "Tema",
+    "github": "GitHub"
+  },
+  "home": {
+    "tagline": "Generatore di CV gratuito e open source",
+    "title": "Crea un CV professionale. Gratis. Senza trucchi.",
+    "subtitle": "Nessun watermark, nessun paywall, nessun account. I tuoi dati non lasciano mai il browser.",
+    "cta": "Crea il tuo CV",
+    "soon": "L'editor è in costruzione.",
+    "spike": "Test motore PDF"
+  }
+}

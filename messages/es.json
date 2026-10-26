@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "gitFolio — Creador de CV gratuito y de código abierto",
+    "description": "Crea currículums profesionales gratis. Sin marca de agua, sin muro de pago, sin registro. Tus datos se quedan en tu navegador."
+  },
+  "common": {
+    "language": "Idioma",
+    "theme": "Tema",
+    "github": "GitHub"
+  },
+  "home": {
+    "tagline": "Creador de CV gratuito y de código abierto",
+    "title": "Crea un CV profesional. Gratis. Sin trampas.",
+    "subtitle": "Sin marca de agua, sin muro de pago, sin cuenta. Tus datos nunca salen de tu navegador.",
+    "cta": "Crea tu CV",
+    "soon": "El editor está en construcción.",
+    "spike": "Prueba del motor PDF"
+  }
+}
