@@ -3,6 +3,7 @@
 import { Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
+import { getPreset } from '@/config/presets';
 import type { Locale } from '@/core/schema/cv';
 import { sampleCv } from '@/core/schema/sample';
 import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
@@ -50,6 +51,12 @@ export function DesignLab() {
     return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
   }, [locale, profile, photo]);
 
+  // /editor/?preset=<id> parte da un preset (usato dalla galleria della home)
+  useEffect(() => {
+    const preset = getPreset(new URLSearchParams(window.location.search).get('preset'));
+    if (preset) setDesign(preset.design());
+  }, []);
+
   useEffect(() => {
     renderer.current = createPdfRenderer();
     return () => renderer.current?.dispose();
@@ -87,7 +94,7 @@ export function DesignLab() {
     const base = initialDesign();
     const parts: Partial<Record<TabId, Partial<DesignSettings>>> = {
       photo: { photo: base.photo }, layout: { page: base.page }, colors: { colors: base.colors, paletteId: base.paletteId },
-      text: { typography: base.typography }, style: { style: base.style },
+      text: { typography: base.typography }, style: { style: base.style, pattern: base.pattern },
     };
     setDesign((d) => ({ ...d, ...parts[tab] }));
   };

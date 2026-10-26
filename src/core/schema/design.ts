@@ -58,6 +58,8 @@ export interface StyleSettings {
   skillStyle: 'list' | 'tags' | 'bars' | 'inline';
 }
 
+import type { PatternSettings } from '../pattern/patterns';
+import { defaultPattern } from '../pattern/patterns';
 import type { PhotoShape } from '../photo/shapes';
 
 export interface PhotoSettings {
@@ -78,6 +80,8 @@ export interface DesignSettings {
   page: PageSettings;
   style: StyleSettings;
   photo: PhotoSettings;
+  /** Decorazione di sfondo (opzionale). */
+  pattern: PatternSettings;
 }
 
 export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignSettings => ({
@@ -94,6 +98,7 @@ export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignS
     sectionGap: 14, itemGap: 8, columns: 1, columnRatio: 32, sidebarSide: 'left', dateStyle: 'right',
     sidebarSections: ['contacts', 'skills', 'languages', 'certifications'], sidebarOffsets: {}, sidebarHeight: 'full', sidebarHeightPct: 60,
   },
+  pattern: { ...defaultPattern },
   photo: { position: 'left', shape: 'circle', size: 84, borderWidth: 0, borderColor: '' },
   style: { titleStyle: 'underline', divider: 'thin', bullet: 'dot', headerAlign: 'left', sidebarFill: false, skillStyle: 'tags' },
 });

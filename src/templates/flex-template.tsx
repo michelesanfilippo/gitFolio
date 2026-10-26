@@ -1,9 +1,10 @@
-import { Document, Image, Link, Page, Text, View } from '@react-pdf/renderer';
+import { Circle, Document, Image, Link, Page, Path, Svg, Text, View } from '@react-pdf/renderer';
 import type { Styles } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
 import type { CvDocument, DateRange } from '@/core/schema/cv';
 import { SECTION_ORDER, type DesignSettings, type SectionId } from '@/core/schema/design';
+import { generatePattern, patternRegion, resolvePatternColor } from '@/core/pattern/patterns';
 import { shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, readableOn } from '@/core/theme/contrast';
 import { formatMonth, labels, type Labels } from './labels';
@@ -275,6 +276,26 @@ function Photo({ ctx }: { ctx: Ctx }) {
   );
 }
 
+/** Decorazione di sfondo: SVG assoluto, ripetuto su ogni pagina, sotto al contenuto. */
+function PatternLayer({ ctx, pageW, pageH }: { ctx: Ctx; pageW: number; pageH: number }) {
+  const pat = ctx.d.pattern;
+  if (pat.kind === 'none') return null;
+  const region = patternRegion(pat, pageW, pageH);
+  const shapes = generatePattern(pat, region);
+  if (!shapes.length) return null;
+  const color = resolvePatternColor(pat, ctx.d.colors, contrastRatio);
+  return (
+    <Svg fixed viewBox={`0 0 ${region.width} ${region.height}`} style={{ position: 'absolute', left: region.x, top: region.y, width: region.width, height: region.height }}>
+      {shapes.map((sh, i) => {
+        const paint = sh.fill ? { fill: color } : { fill: 'none', stroke: color, strokeWidth: sh.strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+        return sh.type === 'circle'
+          ? <Circle key={i} cx={sh.cx} cy={sh.cy} r={sh.r} opacity={sh.opacity} {...paint} />
+          : <Path key={i} d={sh.d} opacity={sh.opacity} {...paint} />;
+      })}
+    </Svg>
+  );
+}
+
 /**
  * Blocco intestazione: foto + nome formano UN solo gruppo. `headerAlign` posiziona il gruppo intero
  * (sinistra/centro/destra), quindi spostare il nome sposta anche la foto; `photo.position` ne decide
@@ -428,10 +449,12 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
         wrap
         style={{ paddingTop: top, paddingBottom: bottom, paddingLeft: left, paddingRight: right, backgroundColor: colors.background, ...base }}
       >
+        {/* livelli di sfondo (sotto il contenuto): riempimento colonna laterale, poi pattern */}
+        {twoCol && fill && heightMode === 'full' ? <View fixed style={{ ...bgBase, bottom: 0 }} /> : null}
+        {twoCol && fill && heightMode === 'custom' ? <View style={{ ...bgBase, height: (pageH * page.sidebarHeightPct) / 100 }} /> : null}
+        <PatternLayer ctx={ctx} pageW={pageW} pageH={pageH} />
         {twoCol ? (
           <>
-            {fill && heightMode === 'full' ? <View fixed style={{ ...bgBase, bottom: 0 }} /> : null}
-            {fill && heightMode === 'custom' ? <View style={{ ...bgBase, height: (pageH * page.sidebarHeightPct) / 100 }} /> : null}
             <View style={{ flexDirection: sideLeft ? 'row' : 'row-reverse', justifyContent: 'space-between' }}>
               {sidebar}
               {mainCol}

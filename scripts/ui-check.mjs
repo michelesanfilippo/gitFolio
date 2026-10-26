@@ -5,7 +5,7 @@ const image = process.argv[2] ?? '/tmp/portrait-test.jpg';
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1500, height: 950 } });
 const errors = []; p.on('pageerror', (e) => errors.push(String(e))); p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 p.on('requestfailed', (r) => errors.push(`reqfail ${r.url()}`));
-await p.goto('http://localhost:4173/gitFolio/en/spike/');
+await p.goto('http://localhost:4173/gitFolio/en/editor/');
 
 const count = () => p.locator('section[data-render-count]').getAttribute('data-render-count').then(Number);
 const settle = async (prev) => { await p.waitForFunction((n) => Number(document.querySelector('section[data-render-count]')?.dataset.renderCount) > n, prev, { timeout: 30000 }); await p.waitForTimeout(700); return count(); };

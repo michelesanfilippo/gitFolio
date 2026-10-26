@@ -5,3 +5,4 @@ next-env.d.ts
 *.tsbuildinfo
 .env*.local
 .DS_Store
+.tmp-thumbs

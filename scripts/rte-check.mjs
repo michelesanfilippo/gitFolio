@@ -9,7 +9,7 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 let alerted = false;
 page.on('dialog', (d) => { if (d.type() === 'alert') alerted = true; d.dismiss(); });
 
-await page.goto('http://localhost:4173/gitFolio/en/spike/');
+await page.goto('http://localhost:4173/gitFolio/en/editor/');
 const rte = page.getByTestId('rte');
 await rte.click();
 await page.keyboard.press('Control+A');

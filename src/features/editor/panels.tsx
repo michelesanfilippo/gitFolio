@@ -9,6 +9,7 @@ import type { Locale } from '@/core/schema/cv';
 import { SECTION_ORDER, type DesignSettings, type PaletteColors, type SectionId, type Typography } from '@/core/schema/design';
 import { PHOTO_SHAPE_IDS, PHOTO_SHAPES, shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, isValidHex } from '@/core/theme/contrast';
+import { generatePattern, resolvePatternColor, PATTERN_ANCHORS, PATTERN_KINDS, patternRegion, type PatternAnchor, type PatternKind } from '@/core/pattern/patterns';
 import { PhotoField } from '@/features/photo/photo-field';
 import { RichTextEditor } from '@/features/richtext/rich-text-editor';
 import type { RichText } from '@/core/richtext/ast';
@@ -38,6 +39,36 @@ const DividerPreview = ({ kind }: { kind: DesignSettings['style']['divider'] }) 
   kind === 'none' ? <span className="text-xs text-muted">Off</span> : (
     <span className="w-10 text-fg" style={{ borderTop: `${kind === 'thick' ? 2.5 : 1.5}px ${kind === 'dotted' ? 'dotted' : kind === 'dashed' ? 'dashed' : 'solid'} currentColor` }} />
   );
+
+const KIND_LABEL: Record<PatternKind, string> = {
+  none: 'None', dashes: 'Dashes', dots: 'Dots', rings: 'Rings', stars: 'Stars', sparkles: 'Sparkles', leaves: 'Leaves',
+  waves: 'Waves', zigzag: 'Zigzag', plus: 'Plus', triangles: 'Triangles', diamonds: 'Diamonds', chevrons: 'Chevrons',
+};
+const ANCHOR_LABEL: Record<PatternAnchor, string> = {
+  'top-left': 'Top left', 'top-right': 'Top right', 'bottom-left': 'Bottom left', 'bottom-right': 'Bottom right', top: 'Top edge', bottom: 'Bottom edge', full: 'Whole page',
+};
+
+const PatternPreview = ({ kind }: { kind: PatternKind }) => {
+  if (kind === 'none') return <span className="text-xs text-muted">Off</span>;
+  const shapes = generatePattern({ kind, anchor: 'full', color: '', visibility: 1, fade: 0, size: 9, spacing: 1.7, widthPct: 100, heightPct: 100 }, { x: 0, y: 0, width: 44, height: 34 });
+  return (
+    <svg width="44" height="34" viewBox="0 0 44 34" aria-hidden>
+      {shapes.map((sh, i) => {
+        const paint = sh.fill ? { fill: 'var(--accent)' } : { fill: 'none', stroke: 'var(--accent)', strokeWidth: sh.strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+        return sh.type === 'circle' ? <circle key={i} cx={sh.cx} cy={sh.cy} r={sh.r} {...paint} /> : <path key={i} d={sh.d} {...paint} />;
+      })}
+    </svg>
+  );
+};
+
+const AnchorPreview = ({ anchor }: { anchor: PatternAnchor }) => {
+  const r = patternRegion({ kind: 'dots', anchor, color: '', visibility: 1, fade: 0, size: 1, spacing: 1, widthPct: 55, heightPct: 45 }, 26, 34);
+  return (
+    <span className="relative block border border-muted/60 bg-surface" style={{ width: 26, height: 34 }}>
+      <i className="absolute bg-accent/80" style={{ left: r.x, top: r.y, width: r.width, height: r.height }} />
+    </span>
+  );
+};
 
 const BulletPreview = ({ glyph }: { glyph: string }) => <span className="text-lg leading-none text-fg">{glyph}</span>;
 
@@ -287,6 +318,30 @@ export function StylePanel({ design, set }: DesignProps) {
         <Choice label="Bullet style" cols={5} value={s.bullet} onChange={(v) => set('style', { bullet: v })}
           options={[{ value: 'dot', label: 'Dot', g: '•' }, { value: 'square', label: 'Square', g: '■' }, { value: 'dash', label: 'Dash', g: '–' }, { value: 'arrow', label: 'Arrow', g: '›' }, { value: 'none', label: 'None', g: '∅' }]
             .map((o) => ({ value: o.value as typeof s.bullet, label: o.label, preview: <BulletPreview glyph={o.g} /> }))} />
+      </Section>
+      <Section title="Background pattern" hint="A subtle decoration behind your CV. Pick a pattern, where it starts and how visible it is. The PDF cannot blur, so visibility and fade make it softer.">
+        <Choice label="Pattern" cols={4} value={design.pattern.kind} onChange={(v) => set('pattern', { kind: v })}
+          options={PATTERN_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k], preview: <PatternPreview kind={k} /> }))} />
+        {design.pattern.kind !== 'none' ? (
+          <>
+            <Choice label="Starts from" cols={4} value={design.pattern.anchor} onChange={(v) => set('pattern', { anchor: v })}
+              options={PATTERN_ANCHORS.map((a) => ({ value: a, label: ANCHOR_LABEL[a], preview: <AnchorPreview anchor={a} /> }))} />
+            <Range wide label="Visibility" value={Math.round(design.pattern.visibility * 100)} min={5} max={100} step={5} unit="%" onChange={(v) => set('pattern', { visibility: v / 100 })} />
+            <Range wide label="Fade away from the start" value={Math.round(design.pattern.fade * 100)} min={0} max={100} step={5} unit="%" onChange={(v) => set('pattern', { fade: v / 100 })} />
+            <ColorField label="Pattern color" value={resolvePatternColor(design.pattern, design.colors, contrastRatio)} onChange={(v) => set('pattern', { color: v.toUpperCase() })} />
+            {design.pattern.color ? (
+              <button type="button" onClick={() => set('pattern', { color: '' })} className="self-end rounded-md border border-border px-3 py-2 text-xs text-muted hover:bg-border hover:text-fg">Use accent color</button>
+            ) : null}
+            <Range label="Element size" value={design.pattern.size} min={8} max={48} unit=" pt" onChange={(v) => set('pattern', { size: v })} />
+            <Range label="Spacing" value={design.pattern.spacing} min={1.2} max={4} step={0.1} unit="x" onChange={(v) => set('pattern', { spacing: v })} />
+            {['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(design.pattern.anchor) ? (
+              <Range label="Area width" value={design.pattern.widthPct} min={20} max={100} step={5} unit="%" onChange={(v) => set('pattern', { widthPct: v })} />
+            ) : null}
+            {design.pattern.anchor !== 'full' ? (
+              <Range label="Area height" value={design.pattern.heightPct} min={10} max={100} step={5} unit="%" onChange={(v) => set('pattern', { heightPct: v })} />
+            ) : null}
+          </>
+        ) : null}
       </Section>
       <Section title="Skills">
         <Choice label="Show skills as" cols={4} value={s.skillStyle} onChange={(v) => set('style', { skillStyle: v })}
