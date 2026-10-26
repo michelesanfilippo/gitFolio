@@ -30,16 +30,16 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   --card-h: calc(var(--card-w) * 1.414);
   --ring-r: calc((var(--card-w) + var(--gap) * 1px) * var(--n) / 6.28318);       /* raggio: card distanziate, anello ampio */
   --theta: calc(360deg * var(--w) / ((var(--w) + var(--gap)) * var(--n)));       /* angolo coperto da una card */
-  position: relative; height: 22.5rem; perspective: 1300px; perspective-origin: 50% 25%;
+  position: relative; height: 22.5rem; perspective: 1300px; perspective-origin: 50% 22%;
   overflow: hidden; user-select: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
 @media (min-width: 640px) { .ring-stage { --w: 136; height: 25rem; } }
-/* inclinazione verso il basso a sinistra: dà profondità all'anello */
-.ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(9deg) rotateZ(-4.5deg); transform-origin: 50% 50%; }
+/* anello dritto e centrato; la profondità viene dal punto di vista leggermente rialzato (perspective-origin) */
+.ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; }
 .ring-track {
-  position: absolute; left: 50%; top: 4.25rem; width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
+  position: absolute; left: 50%; top: calc(50% - var(--card-h) / 2 - 1rem); width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
   transform-style: preserve-3d; will-change: transform;
 }
 .ring-card { position: absolute; inset: 0; transform-style: preserve-3d; }
@@ -54,7 +54,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   backface-visibility: hidden; transition: filter .25s;
 }
 /* faccia interna: stessa posizione, girata di 180°; più scura perché è il lato "di fondo" dell'anello */
-.ring-slice-in { transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r)) rotateY(180deg); filter: brightness(.62); }
+.ring-slice-in { transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r)) rotateY(180deg); filter: brightness(.6) blur(2.2px); }
 .ring-slice:nth-of-type(1), .ring-slice:nth-of-type(10) { border-radius: 10px 0 0 10px; }
 .ring-slice:nth-of-type(9), .ring-slice:nth-of-type(18) { border-radius: 0 10px 10px 0; }
 .ring-label {

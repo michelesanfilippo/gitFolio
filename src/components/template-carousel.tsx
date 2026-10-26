@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Poin
 import { withBasePath } from '@/config/brand';
 import { presets } from '@/config/presets';
 
-const STEP_MS = 3000;          // pausa tra un avanzamento automatico e il successivo
+const STEP_MS = 2600;          // pausa tra un avanzamento automatico e il successivo
+const FIRST_MS = 1100;         // il primo avanzamento parte subito, senza far aspettare
 const PX_PER_CARD = 150;       // trascinando il mouse/dito di tanti px l'anello avanza di una card
 const IDLE_RESUME_MS = 3500;   // dopo un gesto manuale l'autoplay riprende dopo questo tempo
 const CLICK_SLOP = 6;          // sotto questa distanza un gesto è un clic, non un trascinamento
@@ -35,12 +36,14 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
   useEffect(() => {
     reduce.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce.current) return;
-    const id = window.setInterval(() => {
+    const tick = () => {
       if (paused.current || document.hidden || drag.current.id !== -1) return;
       if (Date.now() - lastTouch.current < IDLE_RESUME_MS) return;
       setPos((p) => Math.round(p) + 1);
-    }, STEP_MS);
-    return () => window.clearInterval(id);
+    };
+    let id = 0;
+    const first = window.setTimeout(() => { tick(); id = window.setInterval(tick, STEP_MS); }, FIRST_MS);
+    return () => { window.clearTimeout(first); window.clearInterval(id); };
   }, []);
 
   const go = useCallback((delta: number) => {

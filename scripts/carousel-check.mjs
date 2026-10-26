@@ -9,7 +9,7 @@ p.on('pageerror', (e) => errors.push(String(e)));
 p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 const ok = (name, cond) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}`); if (!cond) process.exitCode = 1; };
 
-await p.goto(URL); await p.waitForTimeout(1200);
+await p.goto(URL);
 const N = await p.locator('.ring-card').count();
 const front = async () => p.locator('.ring-card').evaluateAll((els) => els.findIndex((e) => e.getAttribute('aria-current') === 'true'));
 const diff = (a, c) => (((c - a) % N) + N) % N;
@@ -22,7 +22,7 @@ ok('12 templates on the ring', N === 12);
 let f0 = await front();
 await p.waitForTimeout(3700);
 let f1 = await front();
-ok('auto-advances card by card', diff(f0, f1) === 1);
+ok('auto-advances card by card (first move starts quickly)', diff(f0, f1) >= 1 && diff(f0, f1) <= 2);
 const mid = await stageMid();
 await p.mouse.move(mid.x, mid.y);
 await p.waitForTimeout(3700);
@@ -81,7 +81,7 @@ ok('clicking the front card opens the editor with that preset', p.url().endsWith
 
 // profondità e linee
 await p.goto(URL); await p.waitForTimeout(800);
-ok('ring is tilted (3D transform on the tilt layer)', (await p.locator('.ring-tilt').evaluate((e) => getComputedStyle(e).transform)) !== 'none');
+ok('ring is upright (not tilted)', (await p.locator('.ring-tilt').evaluate((e) => getComputedStyle(e).transform)) === 'none');
 const ops = await p.locator('svg path[stroke-opacity]').evaluateAll((els) => els.map((e) => Number(e.getAttribute('stroke-opacity'))));
 ok('wavy lines are very light (<= 10% opacity)', ops.length === 5 && Math.max(...ops) <= 0.1);
 
