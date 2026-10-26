@@ -6,15 +6,17 @@
   "common": {
     "language": "Language",
     "theme": "Theme",
-    "github": "GitHub"
+    "github": "GitHub",
+    "star": "Leave it a star"
   },
   "home": {
     "tagline": "Free & open source CV builder",
-    "title": "Your CV. Free with no limits.",
+    "title": "Your CV.",
     "subtitle": "No watermark, no paywall, no account.",
     "cta": "Create your CV",
     "soon": "The editor is under construction.",
     "spike": "PDF engine test",
-    "privacy": "Your data never leaves your browser."
+    "privacy": "Your data never leaves your browser.",
+    "titleLine2": "Free with no limits."
   }
 }

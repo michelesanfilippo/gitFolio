@@ -1,8 +1,5 @@
 import { useTranslations } from 'next-intl';
 import { brand, withBasePath } from '@/config/brand';
-import { locales } from '@/i18n/routing';
-
-const labels: Record<string, string> = { en: 'EN', it: 'IT', fr: 'FR', de: 'DE', es: 'ES' };
 
 function GithubIcon() {
   return (
@@ -20,18 +17,11 @@ export function SiteHeader({ locale }: { locale: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-12 w-auto sm:h-14" />
       </a>
-      <nav aria-label={t('language')} className="flex items-center gap-4 text-sm">
-        {locales.map((l) => (
-          <a key={l} href={withBasePath(`/${l}/`)} hrefLang={l} aria-current={l === locale ? 'true' : undefined}
-             className={l === locale ? 'font-bold text-accent-text' : 'text-muted hover:text-fg'}>
-            {labels[l]}
-          </a>
-        ))}
-        <a href={brand.repoUrl} aria-label={t('github')} title={t('github')} target="_blank" rel="noopener noreferrer"
-           className="ml-2 text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
-          <GithubIcon />
-        </a>
-      </nav>
+      <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer"
+         className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
+        <GithubIcon />
+        <span>{t('star')}</span>
+      </a>
     </header>
   );
 }

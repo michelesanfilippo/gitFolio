@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-const locales = ['en', 'it', 'fr', 'de', 'es'];
+const locales = ['en']; // aggiungere i codici quando le traduzioni vengono riattivate (vedi src/i18n/routing.ts)
 const flat = (o: unknown, p = ''): string[] =>
   typeof o === 'object' && o !== null
     ? Object.entries(o).flatMap(([k, v]) => flat(v, p ? `${p}.${k}` : k))
