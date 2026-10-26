@@ -19,6 +19,7 @@ export function SiteHeader({ locale }: { locale: string }) {
         <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-10 w-auto sm:h-12" />
       </a>
       <div className="flex items-center gap-3 sm:gap-4">
+        <a href={withBasePath(`/${locale}/privacy/`)} className="hidden text-sm text-muted transition-colors hover:text-fg sm:inline">Privacy</a>
         <HeaderActions locale={locale} />
         <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer"
            className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
