@@ -4,7 +4,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CONFIRM_EMAIL } from './auth-context';
 import { getSupabase, shouldBootstrapAuth, supabaseConfigured } from '@/lib/supabase';
-import { AuthContext, type AuthContextValue, type AuthStatus, type LoginMode, type Profile } from './auth-context';
+import { AuthContext, type AuthContextValue, type AuthStatus, type LinkedInIdentity, type LoginMode, type Profile } from './auth-context';
 import { LoginDialog } from './login-dialog';
 
 function friendly(message: string): string {
@@ -17,6 +17,18 @@ function friendly(message: string): string {
 }
 
 const returnUrl = () => `${window.location.origin}${window.location.pathname}${window.location.search}`;
+// Il popup torna su una pagina leggera (la home della lingua) che completa il login e si chiude da sola.
+const POPUP_FLAG = 'oauth-popup';
+const popupReturnUrl = () => `${window.location.origin}${window.location.pathname.replace(/editor\/?$/, '')}?${POPUP_FLAG}=1`;
+const POPUP_TIMEOUT_MS = 5 * 60 * 1000;
+
+function linkedInOf(s: Session | null): LinkedInIdentity | undefined {
+  const id = s?.user.identities?.find((i) => i.provider === 'linkedin_oidc');
+  if (!id) return undefined;
+  const d = { ...s!.user.user_metadata, ...id.identity_data } as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+  return { name: str(d.name) ?? str(d.full_name), email: str(d.email), picture: str(d.picture) ?? str(d.avatar_url) };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -60,11 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else setStatus('out');
   }, [start]);
 
+  // Siamo il popup del login: appena la sessione è salvata (la finestra principale la legge dallo storage condiviso) si chiude.
+  useEffect(() => {
+    if (status !== 'in' || !new URLSearchParams(window.location.search).has(POPUP_FLAG)) return;
+    window.close();
+  }, [status]);
+
   const value = useMemo<AuthContextValue>(() => ({
     status,
     userId: session?.user.id,
     email: session?.user.email ?? undefined,
     profile,
+    linkedIn: linkedInOf(session),
     loginOpen, loginMode,
     openLogin: (mode = 'login') => { setLoginMode(mode); setLoginOpen(true); void start(); },
     closeLogin: () => setLoginOpen(false),
@@ -74,6 +93,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       beforeRedirect.current?.();
       const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: returnUrl() } });
       return error ? friendly(error.message) : null;
+    },
+    async signInOAuthPopup(provider, signal) {
+      const sb = await start();
+      if (!sb) return 'Accounts are not enabled on this site yet.';
+      const { data: cur } = await sb.auth.getSession();
+      const opts = { redirectTo: popupReturnUrl(), skipBrowserRedirect: true };
+      // già loggati con un altro metodo: si collega LinkedIn allo stesso account invece di cambiarlo
+      const { data, error } = cur.session ? await sb.auth.linkIdentity({ provider, options: opts }) : await sb.auth.signInWithOAuth({ provider, options: opts });
+      if (error || !data.url) return friendly(error?.message ?? 'Could not start the login.');
+      const w = window.open(data.url, 'gitfolio-oauth', 'popup,width=520,height=700');
+      if (!w) { // popup bloccato: redirect classico (la bozza dell'editor passa per sessionStorage)
+        beforeRedirect.current?.();
+        window.location.assign(data.url.replace(encodeURIComponent(popupReturnUrl()), encodeURIComponent(returnUrl())));
+        return null;
+      }
+      // La pagina di LinkedIn isola il popup (COOP), quindi `w.closed` non è affidabile: si attende che il popup salvi
+      // nello storage condiviso una sessione con l'identità del provider.
+      return new Promise<string | null>((resolve) => {
+        const check = async () => {
+          const { data: s } = await sb.auth.getSession();
+          if (!s.session?.user.identities?.some((i) => i.provider === provider)) return;
+          apply(sb, s.session);
+          finish(null);
+        };
+        const onStorage = (e: StorageEvent) => { if (e.key?.startsWith('sb-')) void check(); };
+        const { data: { subscription } } = sb.auth.onAuthStateChange(() => void check());
+        const timer = window.setTimeout(() => finish('LinkedIn login timed out. Please try again.'), POPUP_TIMEOUT_MS);
+        const onAbort = () => { try { w.close(); } catch { /* finestra già isolata */ } finish('cancelled'); };
+        function finish(r: string | null) {
+          window.clearTimeout(timer); window.removeEventListener('storage', onStorage); subscription.unsubscribe(); signal?.removeEventListener('abort', onAbort);
+          resolve(r);
+        }
+        window.addEventListener('storage', onStorage);
+        signal?.addEventListener('abort', onAbort);
+      });
     },
     async signInEmail(email, password) {
       const sb = await start();
@@ -101,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     },
     beforeRedirect,
-  }), [status, session, profile, loginOpen, loginMode, start]);
+  }), [status, session, profile, loginOpen, loginMode, start, apply]);
 
   return (
     <AuthContext.Provider value={value}>

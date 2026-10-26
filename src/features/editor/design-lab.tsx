@@ -15,6 +15,7 @@ import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import { ContentPanel } from './content/content-panel';
 import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
 import { useCloudTemplates } from './cloud';
+import { LinkedInImportButton } from './linkedin-import';
 import { PdfPreview } from './pdf-preview';
 
 // Laboratorio di Fase 0: valida motore PDF + opzioni di design. Sarà sostituito dall'editor (Fase 1).
@@ -32,6 +33,7 @@ const TABS: Array<{ id: TabId; label: string; Icon: LucideIcon }> = [
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 1.2;
 const ZOOM_STEP = 0.1;
+const ZOOM_DEFAULT = 0.8; // all'apertura la pagina intera sta comoda nell'anteprima
 const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10));
 
 const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
@@ -56,7 +58,7 @@ export function DesignLab() {
   const [design, setDesign] = useState<DesignSettings>(initialDesign);
   const [tab, setTab] = useState<TabId>('content');
   const [doc, setDocState] = useState<CvDocument>(() => sampleCv('en'));
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [buffer, setBuffer] = useState<ArrayBuffer>();
   const [renders, setRenders] = useState(0);
   const [text, setText] = useState<string[]>();
@@ -250,7 +252,7 @@ export function DesignLab() {
   };
 
   return (
-    <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_1fr]">
+    <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
         <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="grid shrink-0 grid-cols-6 border-b border-border">
           {TABS.map(({ id, label, Icon }) => (
@@ -283,7 +285,7 @@ export function DesignLab() {
         ) : null}
       </aside>
 
-      <section className="flex min-h-0 flex-col bg-black/20" aria-label="Preview" data-render-count={renders}>
+      <section className="flex min-h-0 min-w-0 flex-col bg-black/20" aria-label="Preview" data-render-count={renders}>
         <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border px-5 py-3">
           <div className="flex items-center gap-3 text-sm text-muted">
             <Search className="size-6 text-accent" aria-hidden />
@@ -305,6 +307,11 @@ export function DesignLab() {
           {draftNote ? <span role="status" className="flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
           <div className="ml-auto flex items-center gap-3">
             {cloud.saveButton}
+            <LinkedInImportButton doc={doc} onApply={(next) => {
+              if (next.personal.photo !== doc.personal.photo) photoDecided.current = true;
+              setDocState(next);
+              setDocKey((k) => k + 1); // ricrea gli editor di testo con il contenuto importato
+            }} />
             <button type="button" onClick={download} disabled={!buffer}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
               <Download className="size-4" aria-hidden /> Download PDF

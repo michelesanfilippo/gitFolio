@@ -27,7 +27,7 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
         canvas.height = Math.floor(viewport.height);
         canvas.style.width = `${cssWidth}px`;
         canvas.style.height = `${(cssWidth / base.width) * base.height}px`;
-        canvas.className = 'mx-auto mb-4 bg-white shadow-lg';
+        canvas.className = 'mx-auto mb-4 block bg-white shadow-lg'; // block: centrata e scorre nel riquadro quando è più larga
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', `Page ${n} / ${doc.numPages}`);
         await page.render({ canvas, viewport }).promise;
