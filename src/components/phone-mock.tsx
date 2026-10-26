@@ -1,20 +1,94 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { withBasePath } from '@/config/brand';
 
+const REST = { rx: 5, ry: -1 };   // posa di riposo (vista leggermente dall'alto)
+const SWAY = { rx: 1.2, ry: 4 };  // ampiezza del dondolio (gradi)
+const SWAY_S = 9;                 // periodo del dondolio
+const DEG_PER_PX = 0.45;          // sensibilità del trascinamento
+const RX_MAX = 35;                // inclinazione verticale massima
+const FRICTION = 3.5;             // decadimento dello slancio (1/s)
+const RETURN_AFTER_MS = 1800;     // dopo il rilascio torna di fronte dopo questo tempo
+const RETURN_RATE = 2.5;          // velocità del ritorno (1/s)
+const EDGES = 12;                 // strati che formano lo spessore
+
 /**
- * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, Dynamic Island, barra di stato, leggero dondolio.
+ * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, spessore, retro con fotocamere, Dynamic Island.
+ * Dondola da solo; si può ruotare trascinandolo (con slancio), poi torna lentamente di fronte.
  * `children` è lo schermo: per ora una schermata statica della home; in seguito si potrà sostituire con un <video>.
  */
 export function PhoneMock({ children }: { children?: ReactNode }) {
+  const scene = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const s = useRef({ rx: 0, ry: 0, vx: 0, vy: 0, id: -1, x: 0, y: 0, t: 0, last: 0 });
+
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf = 0, prev = performance.now();
+    const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      const st = s.current;
+      if (st.id === -1) {
+        st.ry += st.vy * dt; st.rx += st.vx * dt;
+        const f = Math.exp(-FRICTION * dt); st.vy *= f; st.vx *= f;
+        if (Date.now() - st.last > RETURN_AFTER_MS) { // torna di fronte (al giro intero più vicino)
+          const k = 1 - Math.exp(-RETURN_RATE * dt);
+          st.ry += (Math.round(st.ry / 360) * 360 - st.ry) * k; st.rx -= st.rx * k;
+        }
+        st.rx = Math.max(-RX_MAX, Math.min(RX_MAX, st.rx));
+      }
+      const w = reduce ? 0 : Math.sin((now / 1000 / SWAY_S) * Math.PI * 2);
+      const c = reduce ? 0 : Math.cos((now / 1000 / SWAY_S) * Math.PI * 2);
+      if (body.current) body.current.style.transform =
+        `rotateX(${REST.rx + SWAY.rx * c + st.rx}deg) rotateY(${REST.ry + SWAY.ry * w + st.ry}deg)`;
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const onDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    Object.assign(s.current, { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), vx: 0, vy: 0 });
+    e.currentTarget.setPointerCapture(e.pointerId);
+    scene.current?.classList.add('is-dragging');
+  };
+  const onMove = (e: PointerEvent<HTMLDivElement>) => {
+    const st = s.current;
+    if (st.id !== e.pointerId) return;
+    const now = performance.now(), dt = Math.max(1, now - st.t) / 1000;
+    const dy = (e.clientX - st.x) * DEG_PER_PX, dx = -(e.clientY - st.y) * DEG_PER_PX;
+    st.ry += dy; st.rx = Math.max(-RX_MAX, Math.min(RX_MAX, st.rx + dx));
+    st.vy = dy / dt; st.vx = dx / dt;  // velocità istantanea: diventa lo slancio al rilascio
+    Object.assign(st, { x: e.clientX, y: e.clientY, t: now, last: Date.now() });
+  };
+  const onUp = (e: PointerEvent<HTMLDivElement>) => {
+    const st = s.current;
+    if (st.id !== e.pointerId) return;
+    if (performance.now() - st.t > 80) { st.vx = 0; st.vy = 0; } // fermo prima di rilasciare: nessuno slancio
+    st.id = -1; st.last = Date.now();
+    scene.current?.classList.remove('is-dragging');
+  };
+
   return (
-    <div className="phone-scene" aria-hidden>
+    <div ref={scene} className="phone-scene" aria-hidden onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
       <div className="phone-shadow" />
-      <div className="phone-sway">
+      <div ref={body} className="phone-sway">
+        {Array.from({ length: EDGES }, (_, k) => <span key={k} className="phone-edge" style={{ ['--k' as string]: k }} />)}
+        <span className="phone-btn phone-btn-action" />
+        <span className="phone-btn phone-btn-vol-up" />
+        <span className="phone-btn phone-btn-vol-down" />
+        <span className="phone-btn phone-btn-power" />
+        <div className="phone-back">
+          <div className="phone-cams">
+            <span className="phone-lens phone-lens-1" />
+            <span className="phone-lens phone-lens-2" />
+            <span className="phone-lens phone-lens-3" />
+            <span className="phone-flash" />
+          </div>
+        </div>
         <div className="phone">
-          <span className="phone-btn phone-btn-action" />
-          <span className="phone-btn phone-btn-vol-up" />
-          <span className="phone-btn phone-btn-vol-down" />
-          <span className="phone-btn phone-btn-power" />
           <div className="phone-bezel">
             <div className="phone-screen">
               <span className="phone-island" />
