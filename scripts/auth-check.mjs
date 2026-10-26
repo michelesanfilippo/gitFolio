@@ -176,7 +176,7 @@ await page.getByLabel('Username').fill('Ada Lovelace');
 await page.getByRole('button', { name: 'Save username' }).click();
 await page.waitForTimeout(500);
 ok('username saved', db.profile.username === 'Ada Lovelace');
-await page.setInputFiles('[data-testid=photo-input]', 'scripts/assets/avatar.jpg');
+await page.setInputFiles('[data-testid=photo-input]', 'scripts/assets/avatar-2.jpg');
 await page.waitForTimeout(600);
 await page.getByRole('button', { name: 'Save as default' }).click();
 await page.waitForTimeout(500);

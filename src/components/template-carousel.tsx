@@ -3,7 +3,7 @@ import { presets } from '@/config/presets';
 
 /**
  * Carosello continuo delle anteprime (immagini pre-renderizzate: la home non carica il motore PDF).
- * Pausa al passaggio del mouse / focus; con "riduci movimento" diventa una fila scorrevole a mano.
+ * Non si ferma al passaggio del mouse; si ferma solo quando un template riceve focus/clic; con "riduci movimento" diventa una fila scorrevole a mano.
  */
 export function TemplateCarousel({ locale, label }: { locale: string; label: string }) {
   const group = (hidden: boolean) => (
@@ -26,9 +26,8 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
   return (
     <section aria-label={label} className="border-t border-border bg-bg py-10">
       <div className="marquee" data-brand={brand.name}>
-        <div className="marquee-track">
+        <div className="marquee-track" style={{ animationDuration: `${presets.length * 5}s` }}>
           {group(false)}
-          {group(true)}
           {group(true)}
         </div>
       </div>
