@@ -1,9 +1,12 @@
-import { Circle, Document, Image, Link, Page, Path, Svg, Text, View } from '@react-pdf/renderer';
+import { Circle, Document, Image, Link, Page, Path, Rect, Svg, Text, View } from '@react-pdf/renderer';
 import type { Styles } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
-import type { CvDocument, DateRange } from '@/core/schema/cv';
-import { SECTION_ORDER, type DesignSettings, type SectionId } from '@/core/schema/design';
+import { contactHref, contactText, visibleContacts } from '@/core/content/contacts';
+import { effectiveOrder, sectionTitle } from '@/core/content/order';
+import { CONTACT_ICONS } from '@/core/icons/contact-icons';
+import type { ContactItem, CvDocument, DateRange } from '@/core/schema/cv';
+import type { DesignSettings } from '@/core/schema/design';
 import { generatePattern, patternRegion, resolvePatternColor } from '@/core/pattern/patterns';
 import { shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, readableOn } from '@/core/theme/contrast';
@@ -23,6 +26,8 @@ interface Ctx {
   doc: CvDocument;
   d: DesignSettings;
   L: Labels;
+  /** Titolo mostrato di una sezione (personalizzato > predefinito della lingua). */
+  T: (id: string) => string;
   body: Style;
   small: Style;
 }
@@ -228,19 +233,42 @@ function LanguagesBlock({ ctx }: { ctx: Ctx }) {
   );
 }
 
-function ContactLines({ ctx, stacked }: { ctx: Ctx; stacked: boolean }) {
-  const { personal: p } = ctx.doc;
-  const { colors } = ctx.d;
-  const lines: ReactNode[] = [];
-  if (p.email) lines.push(<Link key="m" src={`mailto:${p.email}`} style={{ color: colors.text, textDecoration: 'none' }}>{p.email}</Link>);
-  if (p.phone) lines.push(<Text key="t">{p.phone}</Text>);
-  if (p.location) lines.push(<Text key="l">{p.location}</Text>);
-  for (const l of p.links) lines.push(<Link key={l.id} src={l.url} style={{ color: colors.primary }}>{l.label ?? l.url}</Link>);
-  if (stacked) return <>{lines.map((n, i) => <Text key={i} style={{ ...ctx.body, marginBottom: 2 }}>{n}</Text>)}</>;
+function ContactIcon({ kind, ctx, bg }: { kind: ContactItem['kind']; ctx: Ctx; bg: string }) {
+  const { iconColor, iconSize } = ctx.d.contacts;
+  const color =
+    iconColor === 'black' ? '#000000' : iconColor === 'white' ? '#FFFFFF' : iconColor === 'primary' ? ctx.d.colors.primary
+    : iconColor === 'accent' ? ctx.d.colors.accent : readableOn(bg);
+  const stroke = { stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
-    <Text style={{ ...ctx.small, color: colors.text, textAlign: ctx.d.style.headerAlign }}>
-      {lines.flatMap((n, i) => (i ? [<Text key={`s${i}`} style={{ color: colors.secondary }}>{'   |   '}</Text>, n] : [n]))}
-    </Text>
+    <Svg viewBox="0 0 24 24" style={{ width: iconSize, height: iconSize }}>
+      {CONTACT_ICONS[kind].map((pr, i) =>
+        pr.t === 'path' ? <Path key={i} d={pr.d} {...stroke} />
+        : pr.t === 'circle' ? <Circle key={i} cx={pr.cx} cy={pr.cy} r={pr.r} {...stroke} />
+        : <Rect key={i} x={pr.x} y={pr.y} width={pr.w} height={pr.h} rx={pr.rx} {...stroke} />,
+      )}
+    </Svg>
+  );
+}
+
+/** Contatti: icona (facoltativa) + testo cliccabile. In colonna (barra laterale) oppure su righe affiancate (intestazione). */
+function ContactLines({ ctx, stacked, bg }: { ctx: Ctx; stacked: boolean; bg: string }) {
+  const items = visibleContacts(ctx.doc.personal.contacts);
+  const { icons } = ctx.d.contacts;
+  const align = ctx.d.style.headerAlign;
+  const justify = align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end';
+  const text: Style = { ...(stacked ? ctx.body : ctx.small), color: ctx.d.colors.text, textDecoration: 'none' };
+  return (
+    <View style={stacked ? undefined : { flexDirection: 'row', flexWrap: 'wrap', justifyContent: justify, width: '100%' }}>
+      {items.map((c) => {
+        const href = contactHref(c);
+        return (
+          <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: stacked ? 3 : 2, ...(stacked ? {} : { marginRight: 14 }) }}>
+            {icons ? <View style={{ marginRight: 5 }}><ContactIcon kind={c.kind} ctx={ctx} bg={bg} /></View> : null}
+            {href ? <Link src={href} style={text}>{contactText(c)}</Link> : <Text style={text}>{contactText(c)}</Text>}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -334,17 +362,17 @@ function Header({ ctx, withContacts, photoInSide = false }: { ctx: Ctx; withCont
         {text}
         {hasPhoto && !photoFirst && !stacked ? photoBox : null}
       </View>
-      {withContacts ? <View style={{ marginTop: 8, width: '100%', alignItems: edge }}><ContactLines ctx={ctx} stacked={false} /></View> : null}
+      {withContacts && visibleContacts(personal.contacts).length ? <View style={{ marginTop: 8, width: '100%' }}><ContactLines ctx={ctx} stacked={false} bg={colors.background} /></View> : null}
     </View>
   );
 }
 
 function sections(ctx: Ctx) {
   const { doc, L } = ctx;
-  const out: Partial<Record<SectionId, ReactNode>> = {};
-  if (doc.profile?.length) out.profile = <Section title={L.profile} ctx={ctx}><Rich blocks={doc.profile} ctx={ctx} /></Section>;
+  const out: Record<string, ReactNode> = {};
+  if (doc.profile?.length) out.profile = <Section title={ctx.T('profile')} ctx={ctx}><Rich blocks={doc.profile} ctx={ctx} /></Section>;
   if (doc.experience.length) out.experience = (
-    <Section title={L.experience} ctx={ctx}>
+    <Section title={ctx.T('experience')} ctx={ctx}>
       <Items items={doc.experience} ctx={ctx} render={(e) => (
         <>
           <EntryHeader title={e.role} sub={[e.company, e.location].filter(Boolean).join(' · ')} range={e.dates} ctx={ctx} />
@@ -354,7 +382,7 @@ function sections(ctx: Ctx) {
     </Section>
   );
   if (doc.education.length) out.education = (
-    <Section title={L.education} ctx={ctx}>
+    <Section title={ctx.T('education')} ctx={ctx}>
       <Items items={doc.education} ctx={ctx} render={(e) => (
         <>
           <EntryHeader title={e.degree} sub={[e.school, e.location].filter(Boolean).join(' · ')} range={e.dates} ctx={ctx} />
@@ -364,7 +392,7 @@ function sections(ctx: Ctx) {
     </Section>
   );
   if (doc.projects.length) out.projects = (
-    <Section title={L.projects} ctx={ctx}>
+    <Section title={ctx.T('projects')} ctx={ctx}>
       <Items items={doc.projects} ctx={ctx} render={(pr) => (
         <View wrap={false}>
           <Text style={{ ...ctx.body, fontWeight: 700, color: ctx.d.colors.heading }}>
@@ -377,10 +405,10 @@ function sections(ctx: Ctx) {
       )} />
     </Section>
   );
-  if (doc.skills.length) out.skills = <Section title={L.skills} ctx={ctx}><Skills ctx={ctx} /></Section>;
-  if (doc.languages.length) out.languages = <Section title={L.languages} ctx={ctx}><LanguagesBlock ctx={ctx} /></Section>;
+  if (doc.skills.length) out.skills = <Section title={ctx.T('skills')} ctx={ctx}><Skills ctx={ctx} /></Section>;
+  if (doc.languages.length) out.languages = <Section title={ctx.T('languages')} ctx={ctx}><LanguagesBlock ctx={ctx} /></Section>;
   if (doc.certifications.length) out.certifications = (
-    <Section title={L.certifications} ctx={ctx}>
+    <Section title={ctx.T('certifications')} ctx={ctx}>
       <Items items={doc.certifications} ctx={ctx} render={(c) => (
         <View wrap={false}>
           <Text style={{ ...ctx.body, fontWeight: 700 }}>{c.name}</Text>
@@ -390,6 +418,11 @@ function sections(ctx: Ctx) {
       )} />
     </Section>
   );
+  for (const c of doc.custom) {
+    if (c.body.length || c.title.trim()) {
+      out[c.id] = <Section title={ctx.T(c.id)} ctx={ctx}><Rich blocks={c.body} ctx={ctx} /></Section>;
+    }
+  }
   return out;
 }
 
@@ -399,6 +432,7 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
   const base: Style = { fontFamily: ty.bodyFont, fontWeight: ty.bodyWeight, letterSpacing: ty.letterSpacing };
   const ctx: Ctx = {
     doc, d: design, L,
+    T: (id) => sectionTitle(id, doc, L),
     body: { ...base, fontSize: ty.bodySize, lineHeight: ty.lineHeight, color: colors.text, textAlign: ty.align },
     small: { ...base, fontSize: ty.bodySize * 0.9, lineHeight: ty.lineHeight, color: colors.text },
   };
@@ -412,14 +446,22 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
   const inner = pageW - left - right;
   const sideLeft = page.sidebarSide === 'left';
 
-  // Assegnazione sezioni -> colonna. Con 1 colonna (o colonna laterale vuota) tutto fluisce in un'unica colonna.
+  // Ordine e colonna di ogni sezione. Con 1 colonna (o colonna laterale vuota) tutto fluisce in un'unica colonna.
+  const hidden = new Set(doc.hiddenSections);
+  const order = effectiveOrder(page.sectionOrder, doc);
   const sideIds = new Set(page.sidebarSections);
   const twoCol = page.columns === 2 && sideIds.size > 0;
-  const contactsInSide = twoCol && sideIds.has('contacts');
-  const offset = (id: SectionId) => (twoCol && sideIds.has(id) ? Math.max(0, page.sidebarOffsets[id] ?? 0) : 0);
+  const contactsInSide = twoCol && sideIds.has('contacts') && !hidden.has('contacts');
+  const showHeaderContacts = !contactsInSide && !hidden.has('contacts');
+  const sidebarBg = design.style.sidebarFill ? colors.badge : colors.background;
+  const contactsNode = <Section title={ctx.T('contacts')} ctx={ctx}><ContactLines ctx={ctx} stacked bg={sidebarBg} /></Section>;
+  const offset = (id: string) => (twoCol && sideIds.has(id) ? Math.max(0, page.sidebarOffsets[id] ?? 0) : 0);
   const pick = (inSide: boolean) =>
-    SECTION_ORDER.filter((id) => id !== 'contacts' && (twoCol ? sideIds.has(id) === inSide : !inSide) && built[id])
-      .map((id) => <View key={id} style={offset(id) ? { marginTop: offset(id) } : undefined}>{built[id]}</View>);
+    order
+      .filter((id) => !hidden.has(id) && (twoCol ? sideIds.has(id) === inSide : !inSide))
+      .map((id) => ({ id, node: id === 'contacts' ? (contactsInSide ? contactsNode : null) : built[id] }))
+      .filter((x) => x.node)
+      .map(({ id, node }) => <View key={id} style={offset(id) ? { marginTop: offset(id) } : undefined}>{node}</View>);
   const main = pick(false);
   const side = pick(true);
 
@@ -437,13 +479,12 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
           <Photo ctx={ctx} maxSize={sideW - (card ? 20 : 0)} />
         </View>
       ) : null}
-      {contactsInSide ? <View style={offset('contacts') ? { marginTop: offset('contacts') } : undefined}><Section title={L.contacts} ctx={ctx}><ContactLines ctx={ctx} stacked /></Section></View> : null}
       {side}
     </View>
   );
   const mainCol = (
     <View style={{ width: mainW }}>
-      <Header ctx={ctx} withContacts={!contactsInSide} photoInSide={photoInSide} />
+      <Header ctx={ctx} withContacts={showHeaderContacts} photoInSide={photoInSide} />
       {main}
     </View>
   );
@@ -471,7 +512,7 @@ export function FlexTemplate({ doc, design }: { doc: CvDocument; design: DesignS
           </>
         ) : (
           <>
-            <Header ctx={ctx} withContacts />
+            <Header ctx={ctx} withContacts={showHeaderContacts} />
             {main}
           </>
         )}

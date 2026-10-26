@@ -1,7 +1,8 @@
 import { p, ul } from '../richtext/ast';
 import type { CvDocument, ExperienceItem } from './cv';
 
-// Contenuto di esempio: solo segnaposto lorem ipsum, nessun riferimento a persone, aziende o prodotti reali.
+// Contenuto iniziale di un utente nuovo: solo segnaposto lorem ipsum, nessun riferimento a persone, aziende o prodotti reali.
+// L'utente sostituisce ogni campo con i propri dati nella scheda Content.
 
 export const LOREM_PROFILE_HTML =
   '<p>Lorem ipsum dolor sit amet, <strong>consectetur adipiscing</strong> elit, sed do <em>eiusmod</em> tempor incididunt ut labore et dolore magna aliqua.</p>';
@@ -23,10 +24,14 @@ export const sampleCv = (locale: CvDocument['locale'] = 'en'): CvDocument => ({
   personal: {
     fullName: 'Lorem Ipsum',
     headline: 'Dolor Sit Amet',
-    email: 'lorem.ipsum@example.com',
-    phone: '+00 000 000 0000',
-    location: 'Lorem City',
-    links: [{ id: 'l1', label: 'example.com/lorem', url: 'https://example.com/lorem' }],
+    contacts: [
+      { id: 'c-email', kind: 'email', value: 'lorem.ipsum@example.com', visible: true },
+      { id: 'c-phone', kind: 'phone', value: '+00 000 000 0000', visible: true },
+      { id: 'c-loc', kind: 'location', value: 'Lorem City', visible: true },
+      { id: 'c-web', kind: 'website', value: 'example.com/lorem', visible: true },
+      { id: 'c-in', kind: 'linkedin', value: 'linkedin.com/in/your-name', visible: true },
+      { id: 'c-gh', kind: 'github', value: 'github.com/your-name', visible: true },
+    ],
   },
   profile: [
     p('Lorem ipsum dolor sit amet, ', { text: 'consectetur adipiscing', bold: true }, ' elit, sed do ', { text: 'eiusmod', italic: true }, ' tempor incididunt ut labore et dolore magna aliqua.'),
@@ -39,8 +44,8 @@ export const sampleCv = (locale: CvDocument['locale'] = 'en'): CvDocument => ({
     { id: 'ed1', degree: 'Lorem Ipsum Degree', school: 'Dolor Sit University', location: 'Lorem City', dates: { start: '2014-09', end: '2017-07' } },
   ],
   skills: [
-    { id: 's1', name: 'Lorem', skills: [{ name: 'Ipsum', level: 5 }, { name: 'Dolor', level: 4 }, { name: 'Sit', level: 4 }, { name: 'Amet', level: 3 }] },
-    { id: 's2', name: 'Consectetur', skills: [{ name: 'Adipiscing', level: 4 }, { name: 'Elit', level: 3 }, { name: 'Tempor', level: 3 }] },
+    { id: 's1', name: 'Lorem', skills: [{ id: 's1a', name: 'Ipsum', level: 5 }, { id: 's1b', name: 'Dolor', level: 4 }, { id: 's1c', name: 'Sit', level: 4 }, { id: 's1d', name: 'Amet', level: 3 }] },
+    { id: 's2', name: 'Consectetur', skills: [{ id: 's2a', name: 'Adipiscing', level: 4 }, { id: 's2b', name: 'Elit', level: 3 }, { id: 's2c', name: 'Tempor', level: 3 }] },
   ],
   languages: [
     { id: 'lg1', name: 'Lorem', level: 'C2', value: 5 },
@@ -50,4 +55,7 @@ export const sampleCv = (locale: CvDocument['locale'] = 'en'): CvDocument => ({
   projects: [
     { id: 'p1', name: 'Lorem Ipsum Project', role: 'Dolor', tech: ['Sit', 'Amet'], description: [p('Sed ut perspiciatis unde omnis iste natus error sit voluptatem.')] },
   ],
+  custom: [],
+  sectionTitles: {},
+  hiddenSections: [],
 });

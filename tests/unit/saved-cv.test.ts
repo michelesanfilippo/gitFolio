@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getPalette } from '@/config/palettes';
 import { cleanRichText, isPhotoDataUrl, mergeKnown, normalizeSaved } from '@/core/saved/saved-cv';
+import { newCustomSection } from '@/core/content/order';
+import { sampleCv } from '@/core/schema/sample';
 import { defaultDesign } from '@/core/schema/design';
 
 const base = () => { const { id, label: _l, ...c } = getPalette('gitfolio'); return defaultDesign(c, id); };
@@ -55,12 +57,52 @@ describe('photo data URLs', () => {
 });
 
 describe('normalizeSaved', () => {
-  it('returns null for garbage and fills defaults otherwise', () => {
-    expect(normalizeSaved('nope', base())).toBeNull();
-    const n = normalizeSaved({ locale: 'xx', design: { colors: { primary: '#123456' } }, photo: 'http://x' }, base());
-    expect(n?.locale).toBe('en');
+  it('returns null for garbage', () => expect(normalizeSaved('nope', base())).toBeNull());
+
+  it('reads the legacy v1 format (design + profile + photo)', () => {
+    const n = normalizeSaved({ locale: 'xx', design: { colors: { primary: '#123456' } }, photo: 'http://x', profile: [{ type: 'p', content: [{ text: 'hi' }] }] }, base());
+    expect(n?.content.locale).toBe('en');
     expect(n?.design.colors.primary).toBe('#123456');
     expect(n?.design.colors.accent).toBe('#C6F36B');
-    expect(n?.photo).toBeUndefined();
+    expect(n?.content.personal.photo).toBeUndefined();
+    expect(n?.content.profile).toEqual([{ type: 'p', content: [{ text: 'hi' }] }]);
+    expect(n?.content.experience.length).toBeGreaterThan(0); // contenuti mancanti = segnaposto
+  });
+
+  it('round-trips a full v2 document', () => {
+    const content = { ...sampleCv('it'), custom: [newCustomSection('Hobbies', [{ type: 'p', content: [{ text: 'chess' }] }])], hiddenSections: ['projects'] };
+    content.sectionTitles = { experience: 'Work', [content.custom[0]!.id]: 'My hobbies' };
+    const n = normalizeSaved(JSON.parse(JSON.stringify({ v: 2, content, design: base() })), base());
+    expect(n?.content).toEqual(content);
+  });
+
+  it('sanitises hostile or malformed v2 content', () => {
+    const n = normalizeSaved({
+      v: 2,
+      content: {
+        locale: 'it',
+        personal: { fullName: 'x'.repeat(500), photo: 'javascript:alert(1)', contacts: [{ id: 'a', kind: 'bogus', value: 'v', visible: false }, 'junk', { id: 'a', kind: 'email', value: 'e@x.co' }] },
+        experience: [{ id: 'e1', role: 'R', dates: { start: '2020-13', end: '2021-02', current: 'yes' } }, 5],
+        skills: [{ id: 'g', name: 'G', skills: [{ id: 's', name: 'S', level: 9 }, { id: 's', name: 'T', level: 3 }] }],
+        custom: [{ id: 'evil', title: 'T', body: [{ type: 'p', content: [{ text: 'a', link: 'javascript:x' }] }] }],
+        sectionTitles: { experience: 'Work', empty: '   ' },
+        hiddenSections: ['profile', 7],
+      },
+      design: base(),
+    }, base());
+    const c = n!.content;
+    expect(c.personal.fullName).toHaveLength(100);
+    expect(c.personal.photo).toBeUndefined();
+    expect(c.personal.contacts[0]).toMatchObject({ kind: 'link', visible: false });
+    expect(c.personal.contacts).toHaveLength(2);
+    expect(new Set(c.personal.contacts.map((x) => x.id)).size).toBe(2); // id duplicati rigenerati
+    expect(c.experience).toHaveLength(1);
+    expect(c.experience[0]!.dates).toEqual({ end: '2021-02' }); // mese 13 e "current" non booleano scartati
+    expect(c.skills[0]!.skills[0]!.level).toBeUndefined();
+    expect(new Set(c.skills[0]!.skills.map((x) => x.id)).size).toBe(2);
+    expect(c.custom[0]!.id.startsWith('custom-')).toBe(true);
+    expect(JSON.stringify(c.custom)).not.toContain('javascript');
+    expect(c.sectionTitles).toEqual({ experience: 'Work' });
+    expect(c.hiddenSections).toEqual(['profile']);
   });
 });

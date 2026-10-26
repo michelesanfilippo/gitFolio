@@ -112,7 +112,8 @@ const names = await page.locator('section[aria-label=Preview] button').allInnerT
 const iS = names.findIndex((t) => /Save template/.test(t)), iDl = names.findIndex((t) => /Download PDF/.test(t));
 ok('Save template is left of Download PDF', iS >= 0 && iS < iDl);
 
-// salva 1: palette Bordeaux
+// salva 1: palette Bordeaux + nome modificato (contenuti)
+await page.getByLabel('Full name').filter({ visible: true }).fill('Saved Person');
 await page.getByRole('tab', { name: 'Colors' }).click();
 await page.getByRole('button', { name: 'Bordeaux' }).click(); n = await settle(n);
 await page.getByRole('button', { name: 'Save template' }).click();
@@ -122,7 +123,7 @@ await page.waitForTimeout(800);
 ok('template created', db.templates.length === 1 && db.templates[0].name === 'Bordeaux CV');
 ok('thumbnail captured', String(db.templates[0].thumbnail).startsWith('data:image/jpeg;base64,'));
 ok('URL now carries ?t=', page.url().includes('?t=t1'));
-ok('saved data has bordeaux palette + schema version', db.templates[0].data.v === 1 && db.templates[0].data.design.paletteId === 'bordeaux');
+ok('saved data has bordeaux palette + schema version', db.templates[0].data.v === 2 && db.templates[0].data.content.personal.fullName === 'Saved Person' && db.templates[0].data.design.paletteId === 'bordeaux');
 
 // aggiornamento (stesso template): cambia palette e risalva senza nuovo dialog
 await page.getByRole('button', { name: 'Forest green' }).click(); n = await settle(n);
@@ -167,6 +168,9 @@ await page.screenshot({ path: '/tmp/dash-1.png' });
 await page.getByRole('link', { name: 'Open Bordeaux CV' }).click();
 await page.waitForURL(/editor\/\?t=/);
 n = await settle(-1);
+await page.getByRole('tab', { name: 'Colors' }).click();
+await page.getByRole('tab', { name: 'Content' }).click();
+ok('opening a saved template restores its content (name)', (await page.getByLabel('Full name').filter({ visible: true }).inputValue()) === 'Saved Person');
 await page.getByRole('tab', { name: 'Colors' }).click();
 ok('opening a saved template restores its palette (forest)', (await page.getByRole('button', { name: 'Forest green', pressed: true }).count()) === 1);
 

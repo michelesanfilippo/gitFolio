@@ -1,16 +1,8 @@
 import DOMPurify from 'dompurify';
 
-/** Protocolli ammessi per i link. Blocca javascript:, data:, vbscript:, file: ecc. */
-const SAFE_URL = /^(?:https?:\/\/|mailto:|tel:)/i;
+import { normalizeUrl, SAFE_URL } from './url';
 
-export function normalizeUrl(raw: string): string | null {
-  const v = raw.trim();
-  if (!v) return null;
-  if (SAFE_URL.test(v)) return v;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return null; // altro schema: rifiutato
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return `mailto:${v}`;
-  return /^[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(v) ? `https://${v}` : null; // "example.com/x" -> https
-}
+export { normalizeUrl };
 
 const ALLOWED_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4'];
 

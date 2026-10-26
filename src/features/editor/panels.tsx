@@ -5,14 +5,14 @@ import { ColorField, Choice, Hint, Range, Section, Segmented, Select, Toggle } f
 import { FontPicker } from '@/components/ui/font-picker';
 import { availableWeights } from '@/config/fonts';
 import { palettes } from '@/config/palettes';
-import type { Locale } from '@/core/schema/cv';
-import { SECTION_ORDER, type DesignSettings, type PaletteColors, type SectionId, type Typography } from '@/core/schema/design';
+import type { CvDocument } from '@/core/schema/cv';
+import { labels } from '@/templates/labels';
+import { effectiveOrder, sectionTitle } from '@/core/content/order';
+import type { DesignSettings, PaletteColors, Typography } from '@/core/schema/design';
 import { PHOTO_SHAPE_IDS, PHOTO_SHAPES, shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, isValidHex } from '@/core/theme/contrast';
 import { generatePattern, resolvePatternColor, PATTERN_ANCHORS, PATTERN_KINDS, patternRegion, type PatternAnchor, type PatternKind } from '@/core/pattern/patterns';
 import { PhotoField } from '@/features/photo/photo-field';
-import { RichTextEditor } from '@/features/richtext/rich-text-editor';
-import type { RichText } from '@/core/richtext/ast';
 
 export type SetDesign = <K extends keyof DesignSettings>(key: K, patch: Partial<DesignSettings[K]>) => void;
 interface DesignProps { design: DesignSettings; set: SetDesign }
@@ -78,78 +78,53 @@ const SkillPreview = ({ kind }: { kind: DesignSettings['style']['skillStyle'] })
   return <span className="text-[9px] leading-none text-fg">ipsum · dolor</span>;
 };
 
-const SECTION_LABELS: Record<SectionId, string> = {
-  contacts: 'Contacts', profile: 'Profile', experience: 'Experience', education: 'Education',
-  projects: 'Projects', skills: 'Skills', languages: 'Languages', certifications: 'Certifications',
-};
-
 /** Per ogni sezione: colonna principale o laterale; se laterale, quanto abbassarla rispetto alla precedente. */
-function AssignList({ value, offsets, onChange, onOffset }: {
-  value: SectionId[]; offsets: Partial<Record<SectionId, number>>; onChange: (v: SectionId[]) => void; onOffset: (id: SectionId, v: number) => void;
+function AssignList({ doc, page, onSide, onOffset }: {
+  doc: CvDocument; page: DesignSettings['page']; onSide: (v: string[]) => void; onOffset: (id: string, v: number) => void;
 }) {
-  const side = new Set(value);
-  const put = (id: SectionId, toSide: boolean) => {
+  const side = new Set(page.sidebarSections);
+  const order = effectiveOrder(page.sectionOrder, doc);
+  const L = labels[doc.locale];
+  const put = (id: string, toSide: boolean) => {
     const next = new Set(side);
     if (toSide) next.add(id); else next.delete(id);
-    onChange(SECTION_ORDER.filter((x) => next.has(x)));
+    onSide(order.filter((x) => next.has(x)));
   };
   return (
     <fieldset className="col-span-2">
       <legend className="mb-1.5 text-xs text-muted">What goes in the side column</legend>
       <ul className="divide-y divide-border rounded-lg border border-border">
-        {SECTION_ORDER.map((id) => (
-          <li key={id} className="px-3 py-1.5">
-            <div role="group" aria-label={SECTION_LABELS[id]} className="flex items-center justify-between gap-2">
-              <span className="text-sm text-fg">{SECTION_LABELS[id]}</span>
-              <span className="flex overflow-hidden rounded-md border border-border">
-                {[{ side: false, label: 'Main' }, { side: true, label: 'Side' }].map((o) => (
-                  <button key={o.label} type="button" aria-pressed={side.has(id) === o.side} onClick={() => put(id, o.side)}
-                    className={`px-3 py-1 text-xs ${side.has(id) === o.side ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border'}`}>
-                    {o.label}
-                  </button>
-                ))}
-              </span>
-            </div>
-            {side.has(id) ? (
-              <div className="mt-1 grid">
-                <Range label={`Move ${SECTION_LABELS[id]} down`} value={offsets[id] ?? 0} min={0} max={300} step={5} unit=" pt" onChange={(v) => onOffset(id, v)} />
+        {order.map((id) => {
+          const name = sectionTitle(id, doc, L);
+          return (
+            <li key={id} className="px-3 py-1.5">
+              <div role="group" aria-label={name} className="flex items-center justify-between gap-2">
+                <span className="truncate text-sm text-fg">{name}</span>
+                <span className="flex shrink-0 overflow-hidden rounded-md border border-border">
+                  {[{ side: false, label: 'Main' }, { side: true, label: 'Side' }].map((o) => (
+                    <button key={o.label} type="button" aria-pressed={side.has(id) === o.side} onClick={() => put(id, o.side)}
+                      className={`px-3 py-1 text-xs ${side.has(id) === o.side ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border'}`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </span>
               </div>
-            ) : null}
-          </li>
-        ))}
+              {side.has(id) ? (
+                <div className="mt-1 grid">
+                  <Range label={`Move ${name} down`} value={page.sidebarOffsets[id] ?? 0} min={0} max={300} step={5} unit=" pt" onChange={(v) => onOffset(id, v)} />
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
-      <p className="mt-1.5 text-xs text-muted">Each side-column block can sit lower than the one above it: raise the value to push it down the page.</p>
-      {value.length === 0 ? <p className="mt-1.5 text-xs text-amber-300">Nothing selected: the CV stays on a single column.</p> : null}
+      <p className="mt-1.5 text-xs text-muted">Each side-column block can sit lower than the one above it: raise the value to push it down the page. Reorder sections in the Content tab.</p>
+      {page.sidebarSections.length === 0 ? <p className="mt-1.5 text-xs text-amber-300">Nothing selected: the CV stays on a single column.</p> : null}
     </fieldset>
   );
 }
 
 /* ---------------------------------- pannelli --------------------------------- */
-
-export function ContentPanel(props: {
-  locale: Locale; setLocale: (l: Locale) => void;
-  setProfile: (p: RichText) => void; profileHtml: string; profileKey: number; showText: boolean; setShowText: (v: boolean) => void; text?: string[];
-}) {
-  return (
-    <>
-      <Section title="Sample content" hint="Placeholder text (lorem ipsum) to try the design. In the real editor this is where your CV data goes.">
-        <Select wide label="Language of section titles (Experience, Education…)" value={props.locale} onChange={props.setLocale}
-          options={[{ value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'fr', label: 'Français' }, { value: 'de', label: 'Deutsch' }, { value: 'es', label: 'Español' }]} />
-      </Section>
-      <Section title="Profile text" hint="Format with bold, italic, lists and links. Pasting from Word or Google Docs is cleaned automatically.">
-        <div className="col-span-2"><RichTextEditor key={props.profileKey} label="Profile" onChange={props.setProfile} initialHtml={props.profileHtml} /></div>
-      </Section>
-      <Section title="Recruiter software check" hint="Applicant tracking systems read the text of your PDF. See exactly what they would see.">
-        <Toggle label="Show the text a parser reads" checked={props.showText} onChange={props.setShowText} />
-        {props.showText && props.text ? (
-          <pre className="col-span-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-surface p-3 text-xs">
-            {props.text.map((p, i) => `— page ${i + 1} —\n${p}`).join('\n')}
-          </pre>
-        ) : null}
-      </Section>
-    </>
-  );
-}
 
 export function PhotoPanel({ design, set, photo, setPhoto }: DesignProps & { photo?: string; setPhoto: (p: string | undefined) => void }) {
   return (
@@ -184,7 +159,7 @@ export function PhotoPanel({ design, set, photo, setPhoto }: DesignProps & { pho
   );
 }
 
-export function LayoutPanel({ design, set }: DesignProps) {
+export function LayoutPanel({ design, set, doc }: DesignProps & { doc: CvDocument }) {
   const [perSide, setPerSide] = useState(false);
   const m = design.page.margins;
   const uniform = m.top === m.right && m.right === m.bottom && m.bottom === m.left;
@@ -208,7 +183,7 @@ export function LayoutPanel({ design, set }: DesignProps) {
           <>
             <Segmented label="Side column position" value={design.page.sidebarSide} onChange={(v) => set('page', { sidebarSide: v })} options={[{ value: 'left', label: 'On the left' }, { value: 'right', label: 'On the right' }]} />
             <Range wide label="Side column width" value={design.page.columnRatio} min={22} max={45} unit="%" onChange={(v) => set('page', { columnRatio: v })} />
-            <AssignList value={design.page.sidebarSections} offsets={design.page.sidebarOffsets} onChange={(v) => set('page', { sidebarSections: v })} onOffset={(id, v) => set('page', { sidebarOffsets: { ...design.page.sidebarOffsets, [id]: v } })} />
+            <AssignList doc={doc} page={design.page} onSide={(v) => set('page', { sidebarSections: v })} onOffset={(id, v) => set('page', { sidebarOffsets: { ...design.page.sidebarOffsets, [id]: v } })} />
             <Toggle label="Colored background for the side column" checked={design.style.sidebarFill} onChange={(v) => set('style', { sidebarFill: v })} />
             {design.style.sidebarFill ? (
               <>

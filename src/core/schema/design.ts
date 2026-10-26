@@ -1,3 +1,8 @@
+import { DEFAULT_SIDE, STANDARD_SECTIONS } from '../content/order';
+import type { PatternSettings } from '../pattern/patterns';
+import { defaultPattern } from '../pattern/patterns';
+import type { PhotoShape } from '../photo/shapes';
+
 export interface Palette {
   id: string;
   label: string;
@@ -26,10 +31,6 @@ export interface Typography {
   uppercaseHeadings: boolean;
 }
 
-export type SectionId = 'contacts' | 'profile' | 'experience' | 'education' | 'projects' | 'skills' | 'languages' | 'certifications';
-/** Ordine canonico delle sezioni all'interno di ciascuna colonna. */
-export const SECTION_ORDER: SectionId[] = ['contacts', 'profile', 'experience', 'education', 'projects', 'skills', 'languages', 'certifications'];
-
 export interface PageSettings {
   size: 'A4' | 'LETTER';
   orientation: 'portrait' | 'landscape';
@@ -40,13 +41,23 @@ export interface PageSettings {
   columnRatio: number; // % larghezza sidebar
   sidebarSide: 'left' | 'right';
   /** Sezioni mostrate nella colonna laterale (le altre restano nella colonna principale). */
-  sidebarSections: SectionId[];
+  sidebarSections: string[];
+  /** Ordine di tutte le sezioni (standard e personalizzate). Le mancanti vengono accodate. */
+  sectionOrder: string[];
   /** Spazio sopra ogni sezione della colonna laterale (pt): permette di abbassarla rispetto alle altre. */
-  sidebarOffsets: Partial<Record<SectionId, number>>;
+  sidebarOffsets: Record<string, number>;
   /** Altezza dello sfondo della colonna laterale: pagina intera, quanto il contenuto, oppure % della pagina (solo prima pagina). */
   sidebarHeight: 'full' | 'content' | 'custom';
   sidebarHeightPct: number;
   dateStyle: 'right' | 'inline' | 'below';
+}
+
+export interface ContactStyle {
+  /** Icona accanto a ogni contatto (email, telefono, LinkedIn...). */
+  icons: boolean;
+  /** 'auto' = nero o bianco, il più leggibile sullo sfondo del contatto. */
+  iconColor: 'auto' | 'black' | 'white' | 'primary' | 'accent';
+  iconSize: number; // pt
 }
 
 export interface StyleSettings {
@@ -58,9 +69,6 @@ export interface StyleSettings {
   skillStyle: 'list' | 'tags' | 'bars' | 'inline';
 }
 
-import type { PatternSettings } from '../pattern/patterns';
-import { defaultPattern } from '../pattern/patterns';
-import type { PhotoShape } from '../photo/shapes';
 
 export interface PhotoSettings {
   /** Posizione: accanto al nome (si sposta con esso) oppure in cima alla colonna laterale, sopra i contatti (solo con 2 colonne). */
@@ -80,6 +88,7 @@ export interface DesignSettings {
   page: PageSettings;
   style: StyleSettings;
   photo: PhotoSettings;
+  contacts: ContactStyle;
   /** Decorazione di sfondo (opzionale). */
   pattern: PatternSettings;
 }
@@ -96,8 +105,9 @@ export const defaultDesign = (colors: PaletteColors, paletteId: string): DesignS
     size: 'A4', orientation: 'portrait',
     margins: { top: 40, right: 40, bottom: 40, left: 40 },
     sectionGap: 14, itemGap: 8, columns: 1, columnRatio: 32, sidebarSide: 'left', dateStyle: 'right',
-    sidebarSections: ['contacts', 'skills', 'languages', 'certifications'], sidebarOffsets: {}, sidebarHeight: 'full', sidebarHeightPct: 60,
+    sidebarSections: [...DEFAULT_SIDE], sectionOrder: [...STANDARD_SECTIONS], sidebarOffsets: {}, sidebarHeight: 'full', sidebarHeightPct: 60,
   },
+  contacts: { icons: true, iconColor: 'auto', iconSize: 10 },
   pattern: { ...defaultPattern },
   photo: { position: 'left', shape: 'circle', size: 84, borderWidth: 0, borderColor: '' },
   style: { titleStyle: 'underline', divider: 'thin', bullet: 'dot', headerAlign: 'left', sidebarFill: false, skillStyle: 'tags' },

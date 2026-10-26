@@ -4,16 +4,15 @@ import { Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Se
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
 import { getPreset } from '@/config/presets';
-import type { Locale } from '@/core/schema/cv';
-import { LOREM_PROFILE_HTML, sampleCv } from '@/core/schema/sample';
+import type { CvDocument } from '@/core/schema/cv';
+import { sampleCv } from '@/core/schema/sample';
 import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/schema/design';
-import type { RichText } from '@/core/richtext/ast';
-import { astToHtml } from '@/core/richtext/to-html';
 import { isPhotoDataUrl, normalizeSaved, type SavedCvData } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
 import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
-import { ColorsPanel, ContentPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
+import { ContentPanel } from './content/content-panel';
+import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
 import { useCloudTemplates } from './cloud';
 import { PdfPreview } from './pdf-preview';
 
@@ -55,36 +54,29 @@ function makeThumbnail(src: HTMLCanvasElement): string {
 export function DesignLab() {
   const [design, setDesign] = useState<DesignSettings>(initialDesign);
   const [tab, setTab] = useState<TabId>('content');
-  const [locale, setLocale] = useState<Locale>('en');
-  const [profile, setProfile] = useState<RichText>();
-  const [photo, setPhoto] = useState<string>();
+  const [doc, setDocState] = useState<CvDocument>(() => sampleCv('en'));
   const [zoom, setZoom] = useState(1);
   const [buffer, setBuffer] = useState<ArrayBuffer>();
   const [renders, setRenders] = useState(0);
   const [text, setText] = useState<string[]>();
   const [showText, setShowText] = useState(false);
   const [error, setError] = useState<string>();
-  const [profileHtml, setProfileHtml] = useState(LOREM_PROFILE_HTML);
-  const [profileKey, setProfileKey] = useState(0);
+  const [docKey, setDocKey] = useState(0); // cambia quando si carica un documento: ricrea gli editor di testo
   const renderer = useRef<PdfRenderer>(undefined);
   const thumb = useRef<string>(undefined);
   const auth = useAuth();
 
-  const doc = useMemo(() => {
-    const base = sampleCv(locale);
-    return { ...base, ...(profile ? { profile } : {}), personal: { ...base.personal, photo } };
-  }, [locale, profile, photo]);
+  const setDoc = useCallback((fn: (d: CvDocument) => CvDocument) => setDocState(fn), []);
+  const photo = doc.personal.photo;
+  const setPhoto = useCallback((p: string | undefined) => setDocState((d) => ({ ...d, personal: { ...d.personal, photo: p } })), []);
 
   /** Applica un documento salvato (database o bozza OAuth) allo stato dell'editor, validandolo. */
   const applySaved = useCallback((raw: unknown) => {
     const n = normalizeSaved(raw, initialDesign());
     if (!n) return false;
     setDesign(n.design);
-    setLocale(n.locale);
-    setPhoto(n.photo);
-    setProfile(n.profile);
-    setProfileHtml(n.profile ? astToHtml(n.profile) : LOREM_PROFILE_HTML);
-    setProfileKey((k) => k + 1); // ricrea l'editor di testo con il nuovo contenuto
+    setDocState(n.content);
+    setDocKey((k) => k + 1); // ricrea gli editor di testo con il nuovo contenuto
     return true;
   }, []);
 
@@ -105,7 +97,7 @@ export function DesignLab() {
     if (preset) setDesign(preset.design());
   }, [applySaved]);
 
-  const snapshot = useCallback((): SavedCvData => ({ v: 1, locale, profile, design, photo }), [locale, profile, design, photo]);
+  const snapshot = useCallback((): SavedCvData => ({ v: 2, content: doc, design }), [doc, design]);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
 
@@ -122,7 +114,7 @@ export function DesignLab() {
     const def = auth.profile?.default_photo;
     if (photoDecided.current || !def || !isPhotoDataUrl(def)) return;
     photoDecided.current = true;
-    setPhoto((current) => current ?? def);
+    setDocState((d) => (d.personal.photo ? d : { ...d, personal: { ...d.personal, photo: def } }));
   }, [auth.profile]);
 
   const cloud = useCloudTemplates({
@@ -208,10 +200,10 @@ export function DesignLab() {
 
         <div className="min-h-0 flex-1 overflow-y-auto pt-4">
           <PanelBody id="content" active={tab === 'content'}>
-            <ContentPanel locale={locale} setLocale={setLocale} setProfile={setProfile} profileHtml={profileHtml} profileKey={profileKey} showText={showText} setShowText={setShowText} text={text} />
+            <ContentPanel base={{ doc, setDoc, design, set, docKey }} showText={showText} setShowText={setShowText} text={text} />
           </PanelBody>
           <PanelBody id="photo" active={tab === 'photo'}><PhotoPanel design={design} set={set} photo={photo} setPhoto={setPhoto} /></PanelBody>
-          <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} /></PanelBody>
+          <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} doc={doc} /></PanelBody>
           <PanelBody id="colors" active={tab === 'colors'}><ColorsPanel design={design} setColor={setColor} pickPalette={pickPalette} /></PanelBody>
           <PanelBody id="text" active={tab === 'text'}><TextPanel design={design} set={set} /></PanelBody>
           <PanelBody id="style" active={tab === 'style'}><StylePanel design={design} set={set} /></PanelBody>

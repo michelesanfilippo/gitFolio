@@ -10,7 +10,8 @@ let alerted = false;
 page.on('dialog', (d) => { if (d.type() === 'alert') alerted = true; d.dismiss(); });
 
 await page.goto('http://localhost:4173/gitFolio/en/editor/');
-const rte = page.getByTestId('rte');
+await page.locator('button[aria-expanded]').filter({ hasText: /^Profile/ }).first().click();
+const rte = page.getByRole('textbox', { name: 'Summary' });
 await rte.click();
 await page.keyboard.press('Control+A');
 await page.keyboard.press('Delete');
@@ -38,7 +39,8 @@ const checks = {
 console.log(checks);
 
 // Il testo incollato deve arrivare nel PDF (testo estratto)
-await page.getByLabel('Show the text a parser reads').check();
+await page.locator('button[aria-expanded]').filter({ hasText: /^Language & recruiter check/ }).first().click();
+await page.getByLabel(/Show the text a recruiter/).check();
 await page.waitForTimeout(2500);
 const text = await page.locator('pre').first().textContent();
 console.log('pdf has pasted text:', /Pasted bold/.test(text) && /First item/.test(text) && /good link/.test(text), '| evil link text kept:', /evil link/.test(text));
