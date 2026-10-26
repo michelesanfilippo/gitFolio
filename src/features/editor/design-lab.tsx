@@ -179,6 +179,12 @@ export function DesignLab() {
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', onHide); };
   }, [inAccount]);
 
+  /** Import da LinkedIn (nome, email, foto): la foto importata conta come scelta dell'utente, la predefinita non la sovrascrive. */
+  const importLinkedIn = useCallback((update: (d: CvDocument) => CvDocument) => {
+    photoDecided.current = true;
+    setDocState(update);
+  }, []);
+
   const startOver = useCallback(() => {
     clearDraft();
     lastSavedJson.current = undefined;
@@ -307,11 +313,7 @@ export function DesignLab() {
           {draftNote ? <span role="status" className="flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
           <div className="ml-auto flex items-center gap-3">
             {cloud.saveButton}
-            <LinkedInImportButton doc={doc} onApply={(next) => {
-              if (next.personal.photo !== doc.personal.photo) photoDecided.current = true;
-              setDocState(next);
-              setDocKey((k) => k + 1); // ricrea gli editor di testo con il contenuto importato
-            }} />
+            <LinkedInImportButton onApply={importLinkedIn} />
             <button type="button" onClick={download} disabled={!buffer}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
               <Download className="size-4" aria-hidden /> Download PDF

@@ -1,28 +1,20 @@
 'use client';
 
-import { AlertTriangle, Check, ExternalLink, FileArchive, Loader2, Upload } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { Modal } from '@/components/ui/modal';
+import { Check, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CvDocument } from '@/core/schema/cv';
 import { loadPhoto, renderPhoto } from '@/core/photo/process';
-import { useAuth } from '@/features/auth/auth-context';
-import { applyLinkedIn, availableSections, readLinkedInFiles, type ImportSection, type LinkedInImport } from '@/importers/linkedin/map';
-import { ZIP_MAX_BYTES, ZipError } from '@/importers/linkedin/zip';
+import { useAuth, type LinkedInIdentity } from '@/features/auth/auth-context';
+import { applyLinkedIn } from '@/importers/linkedin';
 
-// Import da LinkedIn in due parti, perché LinkedIn non dà accesso al profilo completo ad app di terze parti:
-// 1) login LinkedIn (OpenID) → foto, nome, email;  2) PDF del profilo ("Save to PDF", istantaneo) → esperienze, studi,
-//    competenze... In alternativa lo ZIP dell'export dati, più completo ma pronto solo dopo minuti/ore.
-// Il file viene letto nel browser; l'utente sceglie le sezioni da importare e poi può modificare tutto a mano.
+// Import da LinkedIn con un click: login LinkedIn (popup) e si importano i dati che LinkedIn espone alle app di terze
+// parti, cioè nome, email e foto. Il resto del CV non cambia; l'utente può modificare tutto a mano.
 
-const EXPORT_URL = 'https://www.linkedin.com/mypreferences/d/download-my-data';
-const PROFILE_URL = 'https://www.linkedin.com/in/me/';
-const isPdf = (f: File) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
-type Pick = ImportSection | 'photo';
+// Se il browser blocca il popup il login avviene con un redirect: al ritorno l'import riparte da qui.
+const PENDING_KEY = 'gitfolio:linkedin-import';
 
-const EMPTY: LinkedInImport = { websites: [], experience: [], education: [], certifications: [], skills: [], languages: [], projects: [], approxDates: false };
-
-const LinkedInIcon = ({ className = 'size-4' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+const LinkedInIcon = () => (
+  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
     <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />
   </svg>
 );
@@ -36,209 +28,68 @@ async function photoFromUrl(url: string): Promise<string> {
   try { return renderPhoto(src, 1, 0, 0); } finally { src.bitmap.close(); }
 }
 
-const cls = {
-  card: 'flex flex-col gap-3 rounded-xl border border-border bg-bg p-4',
-  step: 'grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-fg',
-  btn: 'flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50',
-};
-
-export function LinkedInImportButton({ doc, onApply }: { doc: CvDocument; onApply: (next: CvDocument) => void }) {
+export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDocument) => CvDocument) => void }) {
   const auth = useAuth();
-  const [open, setOpen] = useState(false);
-  const [data, setData] = useState<LinkedInImport>();
-  const [fileName, setFileName] = useState<string>();
-  const [fileError, setFileError] = useState<string>();
-  const [loginError, setLoginError] = useState<string>();
-  const [busy, setBusy] = useState<'login' | 'file'>();
-  const [photo, setPhoto] = useState<string>();
-  const [photoError, setPhotoError] = useState(false);
-  const [pick, setPick] = useState<Set<Pick>>(new Set());
-  const [dragOver, setDragOver] = useState(false);
+  const [busy, setBusy] = useState<'login' | 'import'>();
+  const [note, setNote] = useState<{ ok: boolean; text: string }>();
   const abort = useRef<AbortController>(undefined);
+  const noteTimer = useRef(0);
   const li = auth.linkedIn;
 
-  // Foto del profilo LinkedIn (una volta per sessione del dialog)
+  const show = useCallback((ok: boolean, text: string) => {
+    setNote({ ok, text });
+    window.clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(() => setNote(undefined), ok ? 6000 : 9000);
+  }, []);
+  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
+
+  const importFrom = useCallback(async (id: LinkedInIdentity) => {
+    sessionStorage.removeItem(PENDING_KEY);
+    setBusy('import');
+    const photo = id.picture ? await photoFromUrl(id.picture).catch(() => undefined) : undefined;
+    onApply((doc) => applyLinkedIn(doc, { name: id.name, email: id.email, photo }));
+    setBusy(undefined);
+    const got = [id.name && 'name', id.email && 'email', photo && 'photo'].filter(Boolean).join(', ');
+    show(true, `Imported from LinkedIn: ${got || 'nothing new'}.${id.picture && !photo ? ' The photo could not be loaded: add it from the Photo tab.' : ''}`);
+  }, [onApply, show]);
+
+  // Ritorno dal login: appena l'identità LinkedIn è disponibile si completa l'import (anche dopo un redirect).
   useEffect(() => {
-    if (!open || !li?.picture || photo || photoError) return;
-    let alive = true;
-    photoFromUrl(li.picture).then((p) => { if (alive) setPhoto(p); }, () => { if (alive) setPhotoError(true); });
-    return () => { alive = false; };
-  }, [open, li?.picture, photo, photoError]);
+    if (li && sessionStorage.getItem(PENDING_KEY)) void importFrom(li);
+  }, [li, importFrom]);
 
-  /** Dati dell'export + quelli del login (che completano nome ed email se l'export non li ha). */
-  const merged = useMemo<LinkedInImport | undefined>(() => {
-    if (!data && !li) return undefined;
-    const d = data ?? EMPTY;
-    return { ...d, fullName: d.fullName ?? li?.name, email: d.email ?? li?.email };
-  }, [data, li]);
-
-  const options = useMemo(() => {
-    if (!merged) return [];
-    const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
-    const labels: Record<ImportSection, [string, string?]> = {
-      personal: ['Name, headline & contacts', [merged.fullName, merged.headline].filter(Boolean).join(' · ') || undefined],
-      profile: ['About', 'Your LinkedIn summary'],
-      experience: ['Experience', n(merged.experience.length, 'position', 'positions')],
-      education: ['Education', n(merged.education.length, 'school', 'schools')],
-      certifications: ['Certifications', n(merged.certifications.length, 'certification', 'certifications')],
-      skills: ['Skills', n(merged.skills.length, 'skill', 'skills')],
-      languages: ['Languages', n(merged.languages.length, 'language', 'languages')],
-      projects: ['Projects', n(merged.projects.length, 'project', 'projects')],
-    };
-    const list: Array<{ id: Pick; label: string; detail?: string }> = availableSections(merged).map((id) => ({ id, label: labels[id][0], detail: labels[id][1] }));
-    if (photo) list.unshift({ id: 'photo', label: 'Profile photo', detail: 'From your LinkedIn account' });
-    return list;
-  }, [merged, photo]);
-
-  // Ogni nuova sorgente di dati seleziona tutte le sezioni disponibili
-  useEffect(() => { setPick(new Set(options.map((o) => o.id))); }, [options]);
-
-  const close = () => { abort.current?.abort(); setOpen(false); };
-
-  async function connect() {
-    setBusy('login'); setLoginError(undefined);
+  async function start() {
+    setNote(undefined);
+    if (auth.status === 'disabled') return show(false, "LinkedIn sign-in isn't enabled on this site yet.");
+    if (li) return void importFrom(li);
+    setBusy('login');
+    sessionStorage.setItem(PENDING_KEY, '1');
     abort.current = new AbortController();
     const err = await auth.signInOAuthPopup('linkedin_oidc', abort.current.signal);
-    setBusy(undefined);
-    if (err && err !== 'cancelled') setLoginError(err);
-  }
-
-  async function readFiles(list: FileList | null | undefined) {
-    const files = [...(list ?? [])];
-    if (!files.length) return;
-    if (files.some((f) => f.size > ZIP_MAX_BYTES)) return setFileError(`File too large (max ${ZIP_MAX_BYTES / 1024 / 1024} MB).`);
-    setBusy('file'); setFileError(undefined);
-    try {
-      const pdf = files.find(isPdf);
-      let d: LinkedInImport;
-      if (pdf) {
-        const { readLinkedInPdf } = await import('@/importers/linkedin/pdf');
-        d = await readLinkedInPdf(await pdf.arrayBuffer()).catch(() => { throw new Error('pdf'); });
-      } else {
-        const { linkedInToCv } = await import('@/importers/linkedin/map');
-        const texts = await readLinkedInFiles(files);
-        if (!Object.keys(texts).length) throw new Error('empty');
-        d = linkedInToCv(texts);
-      }
-      if (!availableSections(d).length) throw new Error(pdf ? 'pdf' : 'empty');
-      setData(d);
-      setFileName(pdf ? pdf.name : files.length === 1 ? files[0]!.name : `${files.length} files`);
-    } catch (e) {
-      setFileError(e instanceof ZipError ? 'This file is not a valid ZIP archive.'
-        : e instanceof Error && e.message === 'pdf' ? "This doesn't look like a LinkedIn profile PDF. On your LinkedIn profile use Resources → Save to PDF."
-        : "We couldn't find LinkedIn data in this file. Upload your LinkedIn profile PDF or the data export ZIP.");
-    } finally {
+    if (err) {
+      sessionStorage.removeItem(PENDING_KEY);
       setBusy(undefined);
+      if (err !== 'cancelled') show(false, err);
     }
+    // ok: l'import parte dall'effetto sopra quando arriva l'identità LinkedIn
   }
-
-  const onDrop = (e: DragEvent) => { e.preventDefault(); setDragOver(false); void readFiles(e.dataTransfer.files); };
-
-  function importNow() {
-    if (!merged) return;
-    const sections = new Set([...pick].filter((p): p is ImportSection => p !== 'photo'));
-    let next = applyLinkedIn(doc, merged, sections);
-    if (pick.has('photo') && photo) next = { ...next, personal: { ...next.personal, photo } };
-    onApply(next);
-    setOpen(false);
-  }
-
-  const toggle = (id: Pick) => setPick((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   return (
-    <>
-      <button type="button" onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:border-accent hover:text-accent-text">
-        <LinkedInIcon /> Import from LinkedIn
+    <span className="flex items-center gap-3">
+      {busy === 'login' ? (
+        <span role="status" className="flex items-center gap-1.5 text-xs text-muted">
+          Finish signing in in the LinkedIn window…
+          <button type="button" onClick={() => abort.current?.abort()} className="underline hover:text-fg">Cancel</button>
+        </span>
+      ) : note ? (
+        <span role={note.ok ? 'status' : 'alert'} className={`flex max-w-xs items-center gap-1.5 text-xs ${note.ok ? 'text-muted' : 'text-red-400'}`}>
+          {note.ok ? <Check className="size-3.5 shrink-0 text-accent" aria-hidden /> : null} {note.text}
+        </span>
+      ) : null}
+      <button type="button" onClick={() => void start()} disabled={Boolean(busy)} title="Imports your name, email and photo from LinkedIn"
+        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:border-accent hover:text-accent-text disabled:opacity-60">
+        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LinkedInIcon />} Import from LinkedIn
       </button>
-      <Modal open={open} onClose={close} title="Import from LinkedIn" size="lg">
-        <div className="flex max-h-[72dvh] flex-col gap-4 overflow-y-auto pr-1">
-          <p className="text-sm text-muted">
-            LinkedIn only shares your name, email and photo with other apps. Everything else (experience, education, skills…)
-            comes from the PDF of your profile, which LinkedIn creates in a few seconds. You can edit everything afterwards.
-          </p>
-
-          <section className={cls.card} aria-labelledby="li-step-1">
-            <h3 id="li-step-1" className="flex items-center gap-2 text-sm font-semibold"><span className={cls.step}>1</span> Connect LinkedIn <span className="font-normal text-muted">· photo, name, email</span></h3>
-            {li ? (
-              <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {photo ? <img src={photo} alt="" className="size-10 rounded-full object-cover" /> : <span className="grid size-10 place-items-center rounded-full bg-[#0A66C2] text-white"><LinkedInIcon /></span>}
-                <div className="min-w-0 text-sm">
-                  <p className="truncate font-semibold">{li.name ?? 'LinkedIn account'}</p>
-                  {li.email ? <p className="truncate text-muted">{li.email}</p> : null}
-                </div>
-                <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-accent-text"><Check className="size-4" aria-hidden /> Connected</span>
-              </div>
-            ) : auth.status === 'disabled' ? (
-              <p className="text-sm text-muted">LinkedIn sign-in isn&apos;t enabled on this site yet. You can still import your profile PDF below.</p>
-            ) : busy === 'login' ? (
-              <div className="flex items-center gap-3 text-sm text-muted">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Finish signing in in the LinkedIn window…
-                <button type="button" onClick={() => abort.current?.abort()} className="ml-auto text-xs underline hover:text-fg">Cancel</button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => void connect()} className={`${cls.btn} self-start bg-[#0A66C2] text-white`}>
-                <LinkedInIcon /> Continue with LinkedIn
-              </button>
-            )}
-            {loginError ? <p role="alert" className="text-xs text-red-400">{loginError}</p> : null}
-            {li && photoError ? <p className="text-xs text-muted">Your LinkedIn photo could not be loaded here. You can add it from the Photo tab.</p> : null}
-          </section>
-
-          <section className={cls.card} aria-labelledby="li-step-2">
-            <h3 id="li-step-2" className="flex items-center gap-2 text-sm font-semibold"><span className={cls.step}>2</span> Add your LinkedIn profile PDF <span className="font-normal text-muted">· experience, education, skills</span></h3>
-            <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
-              <li>Open <a href={PROFILE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline">your LinkedIn profile <ExternalLink className="size-3" aria-hidden /></a>.</li>
-              <li>Click <strong className="text-fg">Resources</strong> (or <strong className="text-fg">More</strong>) under your name, then <strong className="text-fg">Save to PDF</strong>.</li>
-              <li>Drop the downloaded PDF here.</li>
-            </ol>
-            <label onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}
-              className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-5 text-center text-sm transition-colors focus-within:outline focus-within:outline-2 ${dragOver ? 'border-accent bg-accent/10' : 'border-border hover:border-accent'}`}>
-              {busy === 'file' ? <Loader2 className="size-5 animate-spin text-muted" aria-hidden />
-                : fileName ? <FileArchive className="size-5 text-accent-text" aria-hidden /> : <Upload className="size-5 text-muted" aria-hidden />}
-              <span>{fileName ? <><strong>{fileName}</strong> · choose another file</> : <><strong>Choose the PDF</strong> or drop it here</>}</span>
-              <span className="text-xs text-muted">Read in your browser, never uploaded.</span>
-              <input type="file" accept=".pdf,application/pdf,.zip,.csv,application/zip" multiple className="sr-only" data-testid="linkedin-input"
-                onChange={(e) => { void readFiles(e.target.files); e.target.value = ''; }} />
-            </label>
-            {fileError ? <p role="alert" className="text-xs text-red-400">{fileError}</p> : null}
-            <details className="text-xs text-muted">
-              <summary className="cursor-pointer select-none hover:text-fg">Want every detail (all skills, projects, phone)? Use the full data export instead</summary>
-              <p className="mt-2">
-                On LinkedIn open <strong className="text-fg">Settings → Data privacy → Get a copy of your data</strong>, request it and drop the ZIP
-                here when LinkedIn emails it to you (from a few minutes up to 24 hours).{' '}
-                <a href={EXPORT_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline">Open data export <ExternalLink className="size-3" aria-hidden /></a>
-              </p>
-            </details>
-          </section>
-
-          {options.length ? (
-            <section className={cls.card} aria-labelledby="li-step-3">
-              <h3 id="li-step-3" className="flex items-center gap-2 text-sm font-semibold"><span className={cls.step}>3</span> Choose what to import</h3>
-              <ul className="grid gap-1.5 sm:grid-cols-2">
-                {options.map((o) => (
-                  <li key={o.id}>
-                    <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border px-3 py-2 text-sm hover:border-accent">
-                      <input type="checkbox" checked={pick.has(o.id)} onChange={() => toggle(o.id)} className="mt-0.5 size-4 accent-[var(--accent)]" />
-                      <span className="min-w-0"><span className="block font-medium">{o.label}</span>{o.detail ? <span className="block truncate text-xs text-muted">{o.detail}</span> : null}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted">Selected sections replace the current ones. Design, colors and your custom sections stay as they are.</p>
-              {merged?.approxDates && (pick.has('experience') || pick.has('education')) ? (
-                <p className="flex items-start gap-1.5 text-xs text-amber-300"><AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden /> Some LinkedIn dates only have a year: we set them to January (start) or December (end). Check them after importing.</p>
-              ) : null}
-            </section>
-          ) : null}
-        </div>
-        <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-4">
-          <p className="mr-auto text-xs text-muted">Signing in creates or links your gitFolio account.</p>
-          <button type="button" onClick={close} className={`${cls.btn} border border-border text-fg`}>Cancel</button>
-          <button type="button" onClick={importNow} disabled={!pick.size} className={`${cls.btn} bg-accent text-accent-fg`}>Import {pick.size ? `(${pick.size})` : ''}</button>
-        </div>
-      </Modal>
-    </>
+    </span>
   );
 }
