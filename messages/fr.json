@@ -10,10 +10,11 @@
   },
   "home": {
     "tagline": "Créateur de CV gratuit et open source",
-    "title": "Créez un CV professionnel. Gratuit. Sans piège.",
-    "subtitle": "Sans filigrane, sans abonnement, sans compte. Vos données ne quittent jamais votre navigateur.",
+    "title": "Votre CV. Gratuit, sans limites.",
+    "subtitle": "Sans filigrane, sans abonnement, sans compte.",
     "cta": "Créer mon CV",
     "soon": "L'éditeur est en construction.",
-    "spike": "Test du moteur PDF"
+    "spike": "Test du moteur PDF",
+    "privacy": "Vos données ne quittent jamais votre navigateur."
   }
 }

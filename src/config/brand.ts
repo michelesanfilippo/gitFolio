@@ -2,7 +2,7 @@
 export const brand = {
   name: 'gitFolio',
   repoUrl: 'https://github.com/michelesanfilippo/gitFolio',
-  logo: '/brand/logo-full.svg',
+  logo: '/brand/logo-full.png',
   mark: '/brand/logo-mark.svg',
   colors: { black: '#171918', lime: '#C6F36B' },
 } as const;

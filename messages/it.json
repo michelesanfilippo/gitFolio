@@ -10,10 +10,11 @@
   },
   "home": {
     "tagline": "Generatore di CV gratuito e open source",
-    "title": "Crea un CV professionale. Gratis. Senza trucchi.",
-    "subtitle": "Nessun watermark, nessun paywall, nessun account. I tuoi dati non lasciano mai il browser.",
+    "title": "Il tuo CV. Gratis, senza limiti.",
+    "subtitle": "Nessun watermark, nessun paywall, nessun account.",
     "cta": "Crea il tuo CV",
     "soon": "L'editor è in costruzione.",
-    "spike": "Test motore PDF"
+    "spike": "Test motore PDF",
+    "privacy": "I tuoi dati non lasciano mai il browser."
   }
 }

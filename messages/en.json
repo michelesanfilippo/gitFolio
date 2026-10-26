@@ -10,10 +10,11 @@
   },
   "home": {
     "tagline": "Free & open source CV builder",
-    "title": "Build a professional CV. Free. No catch.",
-    "subtitle": "No watermark, no paywall, no account. Your data never leaves your browser.",
+    "title": "Your CV. Free with no limits.",
+    "subtitle": "No watermark, no paywall, no account.",
     "cta": "Create your CV",
     "soon": "The editor is under construction.",
-    "spike": "PDF engine test"
+    "spike": "PDF engine test",
+    "privacy": "Your data never leaves your browser."
   }
 }

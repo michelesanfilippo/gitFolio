@@ -10,10 +10,11 @@
   },
   "home": {
     "tagline": "Kostenloser Open-Source-Lebenslauf-Generator",
-    "title": "Erstellen Sie einen professionellen Lebenslauf. Kostenlos. Ohne Haken.",
-    "subtitle": "Kein Wasserzeichen, keine Bezahlschranke, kein Konto. Ihre Daten verlassen nie Ihren Browser.",
+    "title": "Ihr Lebenslauf. Kostenlos, ohne Grenzen.",
+    "subtitle": "Kein Wasserzeichen, keine Bezahlschranke, kein Konto.",
     "cta": "Lebenslauf erstellen",
     "soon": "Der Editor ist in Arbeit.",
-    "spike": "PDF-Engine-Test"
+    "spike": "PDF-Engine-Test",
+    "privacy": "Ihre Daten verlassen nie Ihren Browser."
   }
 }

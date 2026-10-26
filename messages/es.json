@@ -10,10 +10,11 @@
   },
   "home": {
     "tagline": "Creador de CV gratuito y de código abierto",
-    "title": "Crea un CV profesional. Gratis. Sin trampas.",
-    "subtitle": "Sin marca de agua, sin muro de pago, sin cuenta. Tus datos nunca salen de tu navegador.",
+    "title": "Tu CV. Gratis, sin límites.",
+    "subtitle": "Sin marca de agua, sin muro de pago, sin cuenta.",
     "cta": "Crea tu CV",
     "soon": "El editor está en construcción.",
-    "spike": "Prueba del motor PDF"
+    "spike": "Prueba del motor PDF",
+    "privacy": "Tus datos nunca salen de tu navegador."
   }
 }
