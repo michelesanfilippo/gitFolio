@@ -36,3 +36,19 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   .marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; }
   .marquee-track { animation: none; }
 }
+
+/* Sfondo della hero: pattern lime sfocato (bokeh) a tutta larghezza. Solo CSS: nessun costo di rete o di script. */
+.hero-glow {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%, #000 76%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 24%, #000 76%, transparent 100%);
+}
+.hero-glow::before, .hero-glow::after { content: ''; position: absolute; inset: -24px; }
+.hero-glow::before { /* punti piccoli, leggermente sfocati */
+  background-image: radial-gradient(circle, rgb(198 243 107 / 0.4) 0 2.2px, transparent 2.9px);
+  background-size: 26px 26px; filter: blur(1.1px);
+}
+.hero-glow::after { /* punti grandi e molto sfocati, sfalsati: profondità */
+  background-image: radial-gradient(circle, rgb(198 243 107 / 0.24) 0 8px, transparent 10px);
+  background-size: 78px 78px; background-position: 30px 22px; filter: blur(6px);
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
+import { Check, Download, FileText, LayoutTemplate, Minus, Palette, Plus, RotateCcw, Search, Sparkles, Type, UserRound, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { getPalette } from '@/config/palettes';
 import { getPreset } from '@/config/presets';
@@ -10,6 +10,7 @@ import { defaultDesign, type DesignSettings, type PaletteColors } from '@/core/s
 import { isPhotoDataUrl, normalizeSaved, type SavedCvData } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
 import { createPdfRenderer, type PdfRenderer } from '@/exporters/pdf/client';
+import { clearDraft, loadDraft, saveDraft } from '@/lib/local-draft';
 import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import { ContentPanel } from './content/content-panel';
 import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
@@ -62,6 +63,7 @@ export function DesignLab() {
   const [showText, setShowText] = useState(false);
   const [error, setError] = useState<string>();
   const [docKey, setDocKey] = useState(0); // cambia quando si carica un documento: ricrea gli editor di testo
+  const [draftNote, setDraftNote] = useState<string>();
   const renderer = useRef<PdfRenderer>(undefined);
   const thumb = useRef<string>(undefined);
   const auth = useAuth();
@@ -70,32 +72,55 @@ export function DesignLab() {
   const photo = doc.personal.photo;
   const setPhoto = useCallback((p: string | undefined) => setDocState((d) => ({ ...d, personal: { ...d.personal, photo: p } })), []);
 
-  /** Applica un documento salvato (database o bozza OAuth) allo stato dell'editor, validandolo. */
-  const applySaved = useCallback((raw: unknown) => {
-    const n = normalizeSaved(raw, initialDesign());
-    if (!n) return false;
+  /** Applica un documento già validato allo stato dell'editor. */
+  const applyNormalized = useCallback((n: { content: CvDocument; design: DesignSettings }) => {
     setDesign(n.design);
     setDocState(n.content);
     setDocKey((k) => k + 1); // ricrea gli editor di testo con il nuovo contenuto
-    return true;
   }, []);
 
-  const photoDecided = useRef(false); // foto predefinita: si applica una sola volta, mai sopra scelte dell'utente
+  /** Applica un documento salvato (database o bozza OAuth), validandolo. */
+  const applySaved = useCallback((raw: unknown) => {
+    const n = normalizeSaved(raw, initialDesign());
+    if (!n) return false;
+    applyNormalized(n);
+    return true;
+  }, [applyNormalized]);
 
-  // All'apertura: bozza OAuth > preset (?preset=<id>, dalla galleria della home). I CV salvati (?t=) li gestisce useCloudTemplates.
+  const lastSavedJson = useRef<string>(undefined);
+  const photoDecided = useRef(false); // foto predefinita: si applica una sola volta, mai sopra scelte dell'utente
+  const autosaveOn = useRef(false);   // attivo solo dopo il ripristino iniziale e fuori dai CV salvati nell'account
+
+  // All'apertura: bozza OAuth > CV salvato (?t=, gestito da useCloudTemplates) > bozza locale. Un preset (?preset=<id>, dalla
+  // galleria della home) cambia solo il DESIGN: i contenuti già scritti dall'utente restano.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const draft = sessionStorage.getItem(DRAFT_KEY);
-    if (draft) {
+    const stash = sessionStorage.getItem(DRAFT_KEY);
+    if (stash) {
       sessionStorage.removeItem(DRAFT_KEY);
       try {
-        if (applySaved(JSON.parse(draft))) { photoDecided.current = true; return; }
+        if (applySaved(JSON.parse(stash))) { photoDecided.current = true; autosaveOn.current = true; return; }
       } catch { /* bozza illeggibile: si ignora */ }
     }
-    if (params.has('t')) { photoDecided.current = true; return; }
+    if (params.has('t')) { photoDecided.current = true; return; } // CV dell'account: niente bozza locale
+    if (params.has('new')) { // "New CV" dalla Dashboard: si riparte da zero (anche la bozza locale viene scartata)
+      clearDraft();
+      window.history.replaceState(null, '', window.location.pathname);
+      autosaveOn.current = true;
+      return;
+    }
+    const local = loadDraft(initialDesign());
+    if (local) {
+      applyNormalized(local);
+      lastSavedJson.current = JSON.stringify({ v: 2, content: local.content, design: local.design }); // già su disco: niente nuovo salvataggio immediato
+      photoDecided.current = true;
+      setDraftNote('Restored your last draft from this device.');
+      window.setTimeout(() => setDraftNote(undefined), 6000);
+    }
     const preset = getPreset(params.get('preset'));
     if (preset) setDesign(preset.design());
-  }, [applySaved]);
+    autosaveOn.current = true;
+  }, [applySaved, applyNormalized]);
 
   const snapshot = useCallback((): SavedCvData => ({ v: 2, content: doc, design }), [doc, design]);
   const snapshotRef = useRef(snapshot);
@@ -123,6 +148,46 @@ export function DesignLab() {
     load: (data) => { applySaved(data); photoDecided.current = true; },
     canSave: Boolean(buffer),
   });
+
+  // Salvataggio automatico locale: solo questo browser, nulla viene inviato. Non parte finché l'utente non cambia qualcosa
+  // e si ferma quando si lavora su un CV salvato nell'account (quello si salva con "Save template").
+  const baselineJson = useRef<string>(undefined);
+  const inAccount = Boolean(cloud.meta) || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('t'));
+  useEffect(() => {
+    baselineJson.current ??= JSON.stringify({ v: 2, content: sampleCv('en'), design: initialDesign() });
+    if (!autosaveOn.current || inAccount) return;
+    const json = JSON.stringify(snapshotRef.current());
+    if (json === baselineJson.current || json === lastSavedJson.current) return;
+    const timer = window.setTimeout(() => {
+      if (saveDraft(snapshotRef.current())) { lastSavedJson.current = json; setDraftNote('Draft saved on this device'); }
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [doc, design, inAccount]);
+
+  // Prima di chiudere/nascondere la scheda si salva subito (il timer potrebbe non scattare).
+  useEffect(() => {
+    const flush = () => {
+      if (!autosaveOn.current || inAccount) return;
+      const json = JSON.stringify(snapshotRef.current());
+      if (json !== baselineJson.current && json !== lastSavedJson.current && saveDraft(snapshotRef.current())) lastSavedJson.current = json;
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', onHide); };
+  }, [inAccount]);
+
+  const startOver = useCallback(() => {
+    clearDraft();
+    lastSavedJson.current = undefined;
+    setDesign(initialDesign());
+    setDocState(sampleCv('en'));
+    setDocKey((k) => k + 1);
+    photoDecided.current = false;
+    window.history.replaceState(null, '', window.location.pathname);
+    setDraftNote('Started over with the placeholder CV.');
+    window.setTimeout(() => setDraftNote(undefined), 4000);
+  }, []);
 
   useEffect(() => {
     renderer.current = createPdfRenderer();
@@ -200,7 +265,7 @@ export function DesignLab() {
 
         <div className="min-h-0 flex-1 overflow-y-auto pt-4">
           <PanelBody id="content" active={tab === 'content'}>
-            <ContentPanel base={{ doc, setDoc, design, set, docKey }} showText={showText} setShowText={setShowText} text={text} />
+            <ContentPanel base={{ doc, setDoc, design, set, docKey }} showText={showText} setShowText={setShowText} text={text} onStartOver={startOver} />
           </PanelBody>
           <PanelBody id="photo" active={tab === 'photo'}><PhotoPanel design={design} set={set} photo={photo} setPhoto={setPhoto} /></PanelBody>
           <PanelBody id="layout" active={tab === 'layout'}><LayoutPanel design={design} set={set} doc={doc} /></PanelBody>
@@ -237,6 +302,7 @@ export function DesignLab() {
           </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
           {cloud.message}
+          {draftNote ? <span role="status" className="flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
           <div className="ml-auto flex items-center gap-3">
             {cloud.saveButton}
             <button type="button" onClick={download} disabled={!buffer}

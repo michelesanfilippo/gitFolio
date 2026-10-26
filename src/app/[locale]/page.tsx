@@ -11,6 +11,8 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
 
   return (
     <>
+      <div className="relative isolate overflow-hidden">
+        <div className="hero-glow" aria-hidden />
       <section className="mx-auto flex max-w-5xl flex-col items-start gap-6 px-6 py-16">
         <p className="text-sm uppercase tracking-widest text-accent-text">{t('tagline')}</p>
         <h1 className="text-4xl font-bold sm:text-6xl">
@@ -28,6 +30,7 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
           {t('cta')}
         </a>
       </section>
+      </div>
       <TemplateCarousel locale={locale} label={t('templatesLabel')} />
     </>
   );

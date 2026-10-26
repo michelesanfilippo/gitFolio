@@ -186,8 +186,8 @@ await page.getByRole('button', { name: 'Save as default' }).click();
 await page.waitForTimeout(500);
 ok('default photo saved', String(db.profile.default_photo).startsWith('data:image/jpeg;base64,'));
 
-// nuovo CV: la foto predefinita viene applicata
-await page.goto(`${BASE}/en/editor/`); n = await settle(-1);
+// nuovo CV (da Dashboard: ?new=1): riparte da zero e la foto predefinita viene applicata
+await page.goto(`${BASE}/en/editor/?new=1`); n = await settle(-1);
 await page.waitForTimeout(800);
 await page.getByRole('tab', { name: 'Photo' }).click();
 ok('new CV starts with the default photo', (await page.getByText('Change photo').count()) === 1);

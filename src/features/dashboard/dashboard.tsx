@@ -106,7 +106,7 @@ export function Dashboard({ locale }: { locale: string }) {
             <p className="text-sm text-muted">{items ? `${count} of ${MAX_TEMPLATES} saved. Click one to keep working on it.` : 'Loading…'}</p>
           </div>
           {count < MAX_TEMPLATES ? (
-            <a href={editorHref()} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg"><FilePlus2 className="size-4" aria-hidden /> New CV</a>
+            <a href={editorHref('?new=1')} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg"><FilePlus2 className="size-4" aria-hidden /> New CV</a>
           ) : null}
         </div>
         {error ? <p role="alert" className="mb-4 rounded-md border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-300">{error}</p> : null}

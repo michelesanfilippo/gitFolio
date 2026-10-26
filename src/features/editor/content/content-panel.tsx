@@ -16,7 +16,7 @@ import { Card, DeleteButton, IconButton, TextField, VisibilityButton } from './u
 
 type Base = Omit<EditorCtx, 'isOpen' | 'toggle' | 'open'>;
 
-export function ContentPanel({ base, showText, setShowText, text }: { base: Base; showText: boolean; setShowText: (v: boolean) => void; text?: string[] }) {
+export function ContentPanel({ base, showText, setShowText, text, onStartOver }: { base: Base; showText: boolean; setShowText: (v: boolean) => void; text?: string[]; onStartOver: () => void }) {
   const { doc, setDoc, design, set } = base;
   const [openSet, setOpenSet] = useState<Set<string>>(() => new Set(['personal']));
   const ctx: EditorCtx = useMemo(() => ({
@@ -76,7 +76,7 @@ export function ContentPanel({ base, showText, setShowText, text }: { base: Base
     }
   };
 
-  const allKeys = ['personal', ...order, 'add', 'tools'];
+  const allKeys = ['personal', ...order, 'add', 'tools', 'draft'];
 
   return (
     <div className="flex flex-col gap-3 pb-4">
@@ -136,6 +136,16 @@ export function ContentPanel({ base, showText, setShowText, text }: { base: Base
             {text.map((p, i) => `— page ${i + 1} —\n${p}`).join('\n')}
           </pre>
         ) : null}
+      </Card>
+
+      <Card id="draft" title="Your draft" subtitle="Saved automatically on this device" open={ctx.isOpen('draft')} onToggle={ctx.toggle}>
+        <p className="text-xs leading-relaxed text-muted">
+          Everything you type is saved automatically in this browser, so a refresh or a closed tab will not lose your work. Nothing is uploaded unless you log in and press <strong className="text-fg">Save template</strong>.
+        </p>
+        <div className="flex items-center gap-2">
+          <DeleteButton label="Start over with the placeholder CV" onConfirm={onStartOver} />
+          <span className="text-xs text-muted">Start over: clears the draft on this device and restores the placeholder text.</span>
+        </div>
       </Card>
     </div>
   );
