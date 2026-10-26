@@ -25,21 +25,24 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 
 /* Carosello 3D: anello inclinato, card "curve" (fette lungo la circonferenza), posizione gestita da JS nel componente. */
 .ring-stage {
-  --w: 114; --gap: 80; --slices: 9;
+  --w: 100; --gap: 80; --slices: 9;
   --card-w: calc(var(--w) * 1px);
   --card-h: calc(var(--card-w) * 1.414);
   --ring-r: calc((var(--card-w) + var(--gap) * 1px) * var(--n) / 6.28318);       /* raggio: card distanziate, anello ampio */
   --theta: calc(360deg * var(--w) / ((var(--w) + var(--gap)) * var(--n)));       /* angolo coperto da una card */
-  position: relative; flex: 1 1 auto; min-height: 17rem; perspective: 1300px; perspective-origin: 50% 22%;
+  position: relative; height: var(--stage-h); perspective: 1300px; perspective-origin: 50% 22%;
   overflow: hidden; user-select: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
-@media (min-width: 640px) { .ring-stage { --w: 136; min-height: 19rem; } }
-@media (min-width: 640px) and (min-height: 860px) { .ring-stage { --w: 150; } }
-@media (max-height: 700px) { .ring-stage { --w: 92; min-height: 13rem; } }
+/* altezza del carosello: serve anche alla home per calcolare lo spazio rimasto alla parte centrale */
+:root { --stage-h: 14rem; }
+@media (min-width: 640px) { :root { --stage-h: 15.5rem; } .ring-stage { --w: 112; } }
+@media (min-width: 640px) and (min-height: 860px) { :root { --stage-h: 17rem; } .ring-stage { --w: 124; } }
+@media (max-height: 700px) { :root { --stage-h: 12rem; } .ring-stage { --w: 84; } }
 /* anello dritto e centrato; la profondità viene dal punto di vista leggermente rialzato (perspective-origin) */
-.ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; }
+/* l'anello sta tutto dietro il piano z=0 di .ring-tilt: senza pointer-events: none sarebbe lui a ricevere i clic al posto delle card */
+.ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
 .ring-track {
   position: absolute; left: 50%; top: calc(50% - var(--card-h) / 2 - 1rem); width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
   transform-style: preserve-3d; will-change: transform;
@@ -53,7 +56,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   background-size: var(--card-w) var(--card-h); background-repeat: no-repeat;
   background-position: calc(var(--jb) * var(--card-w) / var(--slices) * -1) 0;
   transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r));
-  backface-visibility: hidden; transition: filter .25s;
+  backface-visibility: hidden; transition: filter .25s; pointer-events: auto;
 }
 /* faccia interna: stessa posizione, girata di 180°; più scura perché è il lato "di fondo" dell'anello */
 .ring-slice-in { transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r)) rotateY(180deg); filter: brightness(.6) blur(2.2px); }
@@ -62,7 +65,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .ring-label {
   position: absolute; top: 0; left: 0; width: var(--card-w); margin-top: calc(var(--card-h) + 10px); text-align: center;
   font-size: 12px; font-weight: 600; color: var(--fg);
-  transform: rotateY(var(--a)) translateZ(var(--ring-r)); backface-visibility: hidden; transition: color .25s;
+  transform: rotateY(var(--a)) translateZ(var(--ring-r)); backface-visibility: hidden; transition: color .25s; pointer-events: auto;
 }
 .ring-link:hover .ring-slice:not(.ring-slice-in) { filter: brightness(1.08); }
 .ring-label-in { display: none; } /* i nomi delle card sul lato di fondo creerebbero solo confusione */
@@ -78,4 +81,46 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   .ring-label { transform: none; }
 }
 
-.ring-section { display: flex; flex-direction: column; flex: 1 1 auto; }
+.ring-section { display: flex; flex-direction: column; flex: none; }
+
+/* iPhone in CSS (finitura arancio, leggera vista dall'alto, dondolio lento). --ph = altezza: riempie lo spazio lasciato da header e carosello. */
+.phone-scene {
+  --ph: clamp(240px, calc(100dvh - 4.6rem - var(--stage-h) - 4.5rem), 470px);
+  --pw: calc(var(--ph) * 0.48);
+  position: relative; width: var(--pw); height: var(--ph); perspective: 1400px; flex: none;
+}
+.phone-shadow {
+  position: absolute; left: 12%; right: 12%; bottom: calc(var(--ph) * -0.035); height: calc(var(--ph) * 0.05);
+  background: radial-gradient(closest-side, rgb(0 0 0 / .58), transparent); filter: blur(6px);
+}
+.phone-sway { position: absolute; inset: 0; transform-style: preserve-3d; animation: phone-sway 9s ease-in-out infinite; }
+@keyframes phone-sway {
+  0%, 100% { transform: rotateX(6deg) rotateY(-3deg); }
+  50% { transform: rotateX(4deg) rotateY(5deg); }
+}
+.phone {
+  position: absolute; inset: 0; border-radius: calc(var(--pw) * 0.17); padding: calc(var(--pw) * 0.022);
+  background: linear-gradient(140deg, #f9a866 0%, #ee8136 30%, #d9661f 62%, #f29652 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .25), inset 0 -2px 4px rgb(0 0 0 / .25), 0 30px 50px -20px rgb(0 0 0 / .6);
+}
+.phone-btn { position: absolute; width: 3px; border-radius: 2px; background: linear-gradient(90deg, #c45a19, #f19a55); }
+.phone-btn-action { left: -2px; top: 17%; height: 5%; }
+.phone-btn-vol-up { left: -2px; top: 25%; height: 9%; }
+.phone-btn-vol-down { left: -2px; top: 36%; height: 9%; }
+.phone-btn-power { right: -2px; top: 28%; height: 13%; }
+.phone-bezel { height: 100%; border-radius: calc(var(--pw) * 0.15); padding: calc(var(--pw) * 0.03); background: #050505; }
+.phone-screen {
+  position: relative; height: 100%; overflow: hidden; border-radius: calc(var(--pw) * 0.12);
+  background: var(--bg); display: flex; flex-direction: column;
+}
+.phone-island {
+  position: absolute; z-index: 2; top: calc(var(--pw) * 0.03); left: 50%; width: 30%; height: calc(var(--pw) * 0.085);
+  transform: translateX(-50%); border-radius: 999px; background: #000;
+}
+.phone-status {
+  flex: none; height: calc(var(--pw) * 0.13); display: flex; align-items: center; justify-content: space-between;
+  padding: 0 9% 0 11%; font: 600 calc(var(--pw) * 0.046) / 1 system-ui, sans-serif; color: var(--fg);
+}
+.phone-status-icons { display: flex; align-items: center; gap: calc(var(--pw) * 0.02); }
+.phone-status-icons svg { height: calc(var(--pw) * 0.034); width: auto; }
+.phone-img { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: cover; object-position: top; pointer-events: none; }

@@ -116,7 +116,7 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
       <div className="ring-stage" style={{ ['--n' as string]: n, touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
         <div className="ring-tilt">
-          <ul className="ring-track" style={{ transform: `translateZ(calc(var(--ring-r) * -0.4)) rotateY(${-pos * angle}deg)`, transition: dragging ? 'none' : `transform ${glide}ms cubic-bezier(.22,.8,.25,1)` }}>
+          <ul className="ring-track" style={{ transform: `translateZ(calc(var(--ring-r) * -1)) rotateY(${-pos * angle}deg)`, transition: dragging ? 'none' : `transform ${glide}ms cubic-bezier(.22,.8,.25,1)` }}>
             {presets.map((p, i) => (
               <li key={p.id} className="ring-card" style={{ ['--a' as string]: `${i * angle}deg` }} aria-current={i === front ? 'true' : undefined}>
                 <a href={withBasePath(`/${locale}/editor/?preset=${p.id}`)} title={p.blurb} draggable={false} aria-label={`${p.name} CV template`} onClick={(e) => onCardClick(e, i)}
