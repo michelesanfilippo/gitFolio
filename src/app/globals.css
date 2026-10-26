@@ -30,12 +30,14 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   --card-h: calc(var(--card-w) * 1.414);
   --ring-r: calc((var(--card-w) + var(--gap) * 1px) * var(--n) / 6.28318);       /* raggio: card distanziate, anello ampio */
   --theta: calc(360deg * var(--w) / ((var(--w) + var(--gap)) * var(--n)));       /* angolo coperto da una card */
-  position: relative; height: 22.5rem; perspective: 1300px; perspective-origin: 50% 22%;
+  position: relative; flex: 1 1 auto; min-height: 17rem; perspective: 1300px; perspective-origin: 50% 22%;
   overflow: hidden; user-select: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
-@media (min-width: 640px) { .ring-stage { --w: 136; height: 25rem; } }
+@media (min-width: 640px) { .ring-stage { --w: 136; min-height: 19rem; } }
+@media (min-width: 640px) and (min-height: 860px) { .ring-stage { --w: 150; } }
+@media (max-height: 700px) { .ring-stage { --w: 92; min-height: 13rem; } }
 /* anello dritto e centrato; la profondità viene dal punto di vista leggermente rialzato (perspective-origin) */
 .ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; }
 .ring-track {
@@ -67,7 +69,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .ring-link:hover .ring-label, .ring-link:focus-visible .ring-label { color: var(--accent-text); }
 .ring-link:focus-visible .ring-slice { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (prefers-reduced-motion: reduce) {
-  .ring-stage { height: auto; perspective: none; overflow-x: auto; mask-image: none; -webkit-mask-image: none; cursor: auto !important; }
+  .ring-stage { flex: none; height: auto; perspective: none; overflow-x: auto; mask-image: none; -webkit-mask-image: none; cursor: auto !important; }
   .ring-tilt { position: static; transform: none; }
   .ring-track { position: static; display: flex; gap: 1.25rem; width: max-content; height: auto; margin: 0 auto; padding: 0 1.5rem; transform: none !important; transition: none !important; }
   .ring-card { position: relative; width: var(--card-w); height: calc(var(--card-h) + 2rem); }
@@ -75,3 +77,5 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   .ring-slice-in, .ring-label-in { display: none; }
   .ring-label { transform: none; }
 }
+
+.ring-section { display: flex; flex-direction: column; flex: 1 1 auto; }

@@ -250,7 +250,7 @@ export function DesignLab() {
   };
 
   return (
-    <div className="grid h-[calc(100dvh-5.8rem)] grid-cols-1 lg:grid-cols-[420px_1fr]">
+    <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_1fr]">
       <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
         <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="grid shrink-0 grid-cols-6 border-b border-border">
           {TABS.map(({ id, label, Icon }) => (

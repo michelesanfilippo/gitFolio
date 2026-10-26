@@ -13,10 +13,10 @@ function GithubIcon() {
 export function SiteHeader({ locale }: { locale: string }) {
   const t = useTranslations('common');
   return (
-    <header className="flex items-center justify-between border-b border-border px-6 py-4">
+    <header className="flex items-center justify-between border-b border-border px-6 py-3">
       <a href={withBasePath(`/${locale}/`)} aria-label={brand.name} className="flex items-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-12 w-auto sm:h-14" />
+        <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-10 w-auto sm:h-12" />
       </a>
       <div className="flex items-center gap-3 sm:gap-4">
         <HeaderActions locale={locale} />
