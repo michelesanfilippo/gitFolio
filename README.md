@@ -6,7 +6,7 @@ Free, open source CV builder. No watermark, no paywall, no sign-up. Your data st
 
 Live: https://michelesanfilippo.github.io/gitFolio/
 
-> Status: early development (Phase 0 — foundations and PDF engine spike).
+> Your career, your way.
 
 ## Development
 
