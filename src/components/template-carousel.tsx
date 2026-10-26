@@ -18,7 +18,7 @@ const INERTIA_S = 0.35;        // quanto lontano porta lo slancio del rilascio (
  * (cliccando quella davanti si apre l'editor). Il mouse sopra NON ferma l'avanzamento; si ferma solo col focus da tastiera
  * o durante un gesto. Con "riduci movimento" è una fila piatta scorrevole.
  */
-export function TemplateCarousel({ locale, label }: { locale: string; label: string }) {
+export function TemplateCarousel({ locale, label, cta }: { locale: string; label: string; cta: string }) {
   const n = presets.length;
   const angle = 360 / n;
   const [pos, setPos] = useState(0);            // posizione in "card" (frazionaria durante il trascinamento)
@@ -92,6 +92,13 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
     setDragging(false);
   };
 
+  /** Luce in base all'angolo rispetto allo spettatore: davanti piena, ai lati sempre più scura. */
+  const lit = (i: number) => {
+    let d = (((i - pos) % n) + n) % n;
+    if (d > n / 2) d -= n;
+    return 0.35 + 0.65 * Math.max(0, Math.cos((d * angle * Math.PI) / 180)) ** 1.6;
+  };
+
   /** Card davanti: apre l'editor. Card laterale: la porta davanti. */
   const onCardClick = (e: React.MouseEvent, i: number) => {
     if (justDragged.current) return e.preventDefault();
@@ -113,23 +120,23 @@ export function TemplateCarousel({ locale, label }: { locale: string; label: str
     <section aria-label={label} className="ring-section border-t border-border bg-bg pb-2 pt-2" onKeyDown={onKeyDown}
       onFocusCapture={(e) => { if ((e.target as HTMLElement).matches(':focus-visible')) paused.current = true; }}
       onBlurCapture={() => { paused.current = false; }}>
-      <div className="ring-stage" style={{ ['--n' as string]: n, touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
+      <div className="ring-stage" style={{ ['--n' as string]: n, ['--glide' as string]: dragging ? '0ms' : `${glide}ms`, touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
         <div className="ring-tilt">
-          <ul className="ring-track" style={{ transform: `translateZ(calc(var(--ring-r) * -1)) rotateY(${-pos * angle}deg)`, transition: dragging ? 'none' : `transform ${glide}ms cubic-bezier(.22,.8,.25,1)` }}>
+          <ul className="ring-track" style={{ transform: `translateZ(calc(var(--ring-r) * -1)) rotateY(${-pos * angle}deg)` }}>
             {presets.map((p, i) => (
-              <li key={p.id} className="ring-card" style={{ ['--a' as string]: `${i * angle}deg` }} aria-current={i === front ? 'true' : undefined}>
+              <li key={p.id} className="ring-card" aria-current={i === front ? 'true' : undefined}
+                style={{ ['--a' as string]: `${i * angle}deg`, ['--lit' as string]: lit(i).toFixed(3),
+                  ['--img1' as string]: `url(${withBasePath(`/templates/${p.id}-c1.webp`)})`, ['--img2' as string]: `url(${withBasePath(`/templates/${p.id}-c2.webp`)})` }}>
                 <a href={withBasePath(`/${locale}/editor/?preset=${p.id}`)} title={p.blurb} draggable={false} aria-label={`${p.name} CV template`} onClick={(e) => onCardClick(e, i)}
                   className="ring-link">
                   {Array.from({ length: SLICES }, (_, j) => (
-                    <span key={`o${j}`} aria-hidden className="ring-slice" style={{ ['--j' as string]: j, ['--jb' as string]: j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
+                    <span key={j} aria-hidden className="ring-slice" style={{ ['--j' as string]: j }} />
                   ))}
-                  {/* faccia interna: visibile solo per le card sul lato opposto dell'anello (sequenza invertita: si legge dritta) */}
-                  {Array.from({ length: SLICES }, (_, j) => (
-                    <span key={`i${j}`} aria-hidden className="ring-slice ring-slice-in" style={{ ['--j' as string]: j, ['--jb' as string]: SLICES - 1 - j, backgroundImage: `url(${withBasePath(`/templates/${p.id}.webp`)})` }} />
-                  ))}
+                  {/* faccia interna: un solo piano, visibile solo per le card sul lato opposto dell'anello */}
+                  <span aria-hidden className="ring-back" />
+                  <span aria-hidden className="ring-cta"><span>{cta} →</span></span>
                   <span aria-hidden className="ring-label">{p.name}</span>
-                  <span aria-hidden className="ring-label ring-label-in">{p.name}</span>
                 </a>
               </li>
             ))}

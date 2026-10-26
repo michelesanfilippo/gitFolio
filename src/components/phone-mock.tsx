@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { Rotate3d } from 'lucide-react';
 import { withBasePath } from '@/config/brand';
 
 const REST = { rx: 5, ry: -1 };   // posa di riposo (vista leggermente dall'alto)
@@ -12,20 +13,27 @@ const FRICTION = 3.5;             // decadimento dello slancio (1/s)
 const RETURN_AFTER_MS = 1800;     // dopo il rilascio torna di fronte dopo questo tempo
 const RETURN_RATE = 2.5;          // velocità del ritorno (1/s)
 const EDGES = 12;                 // strati che formano lo spessore
+const NUDGE_FIRST_MS = 1400;      // invito all'interazione: mezzo giro avanti e indietro, finché l'utente non lo tocca
+const NUDGE_EVERY_MS = 6500;
+const NUDGE_MS = 1700;
+const NUDGE_DEG = 28;
 
 /**
  * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, spessore, retro con fotocamere, Dynamic Island.
  * Dondola da solo; si può ruotare trascinandolo (con slancio), poi torna lentamente di fronte.
+ * Finché non viene toccato, ogni tanto accenna una rotazione e mostra `hint` (es. "Drag to rotate").
  * `children` è lo schermo: per ora una schermata statica della home; in seguito si potrà sostituire con un <video>.
  */
-export function PhoneMock({ children }: { children?: ReactNode }) {
+export function PhoneMock({ children, hint }: { children?: ReactNode; hint?: string }) {
   const scene = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
-  const s = useRef({ rx: 0, ry: 0, vx: 0, vy: 0, id: -1, x: 0, y: 0, t: 0, last: 0 });
+  const s = useRef({ rx: 0, ry: 0, vx: 0, vy: 0, id: -1, x: 0, y: 0, t: 0, last: 0, n: 0, touched: false });
+  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf = 0, prev = performance.now();
+    const start = prev;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
@@ -39,10 +47,16 @@ export function PhoneMock({ children }: { children?: ReactNode }) {
         }
         st.rx = Math.max(-RX_MAX, Math.min(RX_MAX, st.rx));
       }
+      st.n = 0;
+      const since = now - start - NUDGE_FIRST_MS;
+      if (!reduce && !st.touched && since >= 0) {
+        const p = (since % NUDGE_EVERY_MS) / NUDGE_MS; // oscillazione smorzata: destra, sinistra, ferma
+        if (p < 1) st.n = NUDGE_DEG * Math.sin(p * Math.PI * 2) * (1 - p) ** 0.7;
+      }
       const w = reduce ? 0 : Math.sin((now / 1000 / SWAY_S) * Math.PI * 2);
       const c = reduce ? 0 : Math.cos((now / 1000 / SWAY_S) * Math.PI * 2);
       if (body.current) body.current.style.transform =
-        `rotateX(${REST.rx + SWAY.rx * c + st.rx}deg) rotateY(${REST.ry + SWAY.ry * w + st.ry}deg)`;
+        `rotateX(${REST.rx + SWAY.rx * c + st.rx}deg) rotateY(${REST.ry + SWAY.ry * w + st.ry + st.n}deg)`;
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
@@ -50,7 +64,10 @@ export function PhoneMock({ children }: { children?: ReactNode }) {
 
   const onDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    Object.assign(s.current, { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), vx: 0, vy: 0 });
+    const st = s.current;
+    st.ry += st.n; st.n = 0; // l'eventuale invito in corso diventa la posizione di partenza: nessuno scatto
+    Object.assign(st, { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), vx: 0, vy: 0, touched: true });
+    setTouched(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     scene.current?.classList.add('is-dragging');
   };
@@ -74,6 +91,12 @@ export function PhoneMock({ children }: { children?: ReactNode }) {
   return (
     <div ref={scene} className="phone-scene" aria-hidden onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
       <div className="phone-shadow" />
+      {hint && (
+        <span className={`phone-hint${touched ? ' is-hidden' : ''}`}>
+          <Rotate3d aria-hidden size={14} strokeWidth={2} />
+          {hint}
+        </span>
+      )}
       <div ref={body} className="phone-sway">
         {Array.from({ length: EDGES }, (_, k) => <span key={k} className="phone-edge" style={{ ['--k' as string]: k }} />)}
         <span className="phone-btn phone-btn-action" />

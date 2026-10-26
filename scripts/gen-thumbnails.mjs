@@ -32,5 +32,9 @@ for i in ${JSON.stringify(ids)}:
     im = Image.open(f'.tmp-thumbs/{i}.png').convert('RGB')
     h = round(im.height * 640 / im.width)
     im.resize((640, h), Image.LANCZOS).save(f'public/templates/{i}.webp', quality=84, method=6)
+    # carosello 3D: le card sono texture GPU ridotte senza mipmap, da 640 px sembrano puntinate (aliasing);
+    # versioni già alla misura mostrata (1x / 2x, scelte con image-set) restano nitide
+    for tag, w in (('c1', 132), ('c2', 264)):
+        im.resize((w, round(im.height * w / im.width)), Image.LANCZOS).save(f'public/templates/{i}-{tag}.webp', quality=90, method=6)
     print('webp', i, 640, h)
 `], { stdio: 'inherit' });

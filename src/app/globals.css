@@ -23,17 +23,24 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-/* Carosello 3D: anello inclinato, card "curve" (fette lungo la circonferenza), posizione gestita da JS nel componente. */
+/* Carosello 3D: anello con card "curve" (fette lungo la circonferenza), posizione gestita da JS nel componente.
+   Nitidezza: le card sono texture GPU ridimensionate senza mipmap, quindi le immagini arrivano già alla misura mostrata
+   (-c1 = 132 px per schermi 1x, -c2 = 264 px per schermi 2x) invece di 640 px che darebbero un effetto puntinato. */
 .ring-stage {
-  --w: 100; --gap: 80; --slices: 9;
+  --w: 100; --gap: 80; --slices: 9; --radius: 8px;
   --card-w: calc(var(--w) * 1px);
   --card-h: calc(var(--card-w) * 1.414);
   --ring-r: calc((var(--card-w) + var(--gap) * 1px) * var(--n) / 6.28318);       /* raggio: card distanziate, anello ampio */
   --theta: calc(360deg * var(--w) / ((var(--w) + var(--gap)) * var(--n)));       /* angolo coperto da una card */
   position: relative; height: var(--stage-h); perspective: 1300px; perspective-origin: 50% 22%;
   overflow: hidden; user-select: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+/* faretto morbido sotto la card davanti: dà un "palco" alla scena */
+.ring-stage::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse calc(var(--card-w) * 1.9) calc(var(--card-h) * .5) at 50% calc(50% + var(--card-h) / 2 - .4rem), rgb(198 243 107 / .09), transparent 70%);
 }
 /* altezza del carosello: serve anche alla home per calcolare lo spazio rimasto alla parte centrale */
 :root { --stage-h: 14rem; }
@@ -45,40 +52,67 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .ring-tilt { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
 .ring-track {
   position: absolute; left: 50%; top: calc(50% - var(--card-h) / 2 - 1rem); width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
-  transform-style: preserve-3d; will-change: transform;
+  transform-style: preserve-3d; will-change: transform; transition: transform var(--glide) cubic-bezier(.22, .8, .25, 1);
 }
 .ring-card { position: absolute; inset: 0; transform-style: preserve-3d; }
-.ring-link { position: absolute; inset: 0; display: block; transform-style: preserve-3d; outline: none; }
+.ring-link { position: absolute; inset: 0; display: block; transform-style: preserve-3d; outline: none; transition: transform .35s cubic-bezier(.22, .8, .25, 1); }
+/* la luce è un velo del colore di fondo sopra l'immagine (non opacity: le fette sovrapposte farebbero righe) */
+.ring-slice, .ring-back {
+  --shade: calc(1 - var(--lit, 1));
+  background-image: linear-gradient(rgb(23 25 24 / var(--shade)), rgb(23 25 24 / var(--shade))), image-set(var(--img1) 1x, var(--img2) 2x);
+  background-repeat: no-repeat;
+}
 .ring-slice {
   position: absolute; top: 0; height: var(--card-h);
   width: calc(var(--card-w) / var(--slices) + 2px);                                  /* +2px di sovrapposizione: niente cuciture tra le fette */
   left: calc(50% - var(--card-w) / var(--slices) / 2);
-  background-size: var(--card-w) var(--card-h); background-repeat: no-repeat;
-  background-position: calc(var(--jb) * var(--card-w) / var(--slices) * -1) 0;
+  background-size: 100% 100%, var(--card-w) var(--card-h);
+  background-position: 0 0, calc(var(--j) * var(--card-w) / var(--slices) * -1) 0;
   transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r));
-  backface-visibility: hidden; transition: filter .25s; pointer-events: auto;
+  backface-visibility: hidden; pointer-events: auto;
 }
-/* faccia interna: stessa posizione, girata di 180°; più scura perché è il lato "di fondo" dell'anello */
-.ring-slice-in { transform: rotateY(calc(var(--a) + (var(--j) - 4) * var(--theta) / var(--slices))) translateZ(var(--ring-r)) rotateY(180deg); filter: brightness(.6) blur(2.2px); }
-.ring-slice:nth-of-type(1), .ring-slice:nth-of-type(10) { border-radius: 10px 0 0 10px; }
-.ring-slice:nth-of-type(9), .ring-slice:nth-of-type(18) { border-radius: 0 10px 10px 0; }
+.ring-slice:nth-of-type(1) { border-radius: var(--radius) 0 0 var(--radius); }
+.ring-slice:nth-of-type(9) { border-radius: 0 var(--radius) var(--radius) 0; }
+/* faccia interna (card sul lato di fondo): un solo piano scuro e sfocato, nessuna striscia */
+.ring-back {
+  position: absolute; top: 0; left: 0; width: var(--card-w); height: var(--card-h); border-radius: var(--radius);
+  --lit: .5; background-size: cover; transform: rotateY(var(--a)) translateZ(var(--ring-r)) rotateY(180deg);
+  backface-visibility: hidden; filter: blur(1.6px); opacity: .4;
+}
+.ring-label, .ring-cta { position: absolute; top: 0; left: 0; width: var(--card-w); transform: rotateY(var(--a)) translateZ(calc(var(--ring-r) + 1px)); backface-visibility: hidden; }
 .ring-label {
-  position: absolute; top: 0; left: 0; width: var(--card-w); margin-top: calc(var(--card-h) + 10px); text-align: center;
-  font-size: 12px; font-weight: 600; color: var(--fg);
-  transform: rotateY(var(--a)) translateZ(var(--ring-r)); backface-visibility: hidden; transition: color .25s; pointer-events: auto;
+  margin-top: calc(var(--card-h) + 12px); text-align: center; white-space: nowrap;
+  font-size: 12px; font-weight: 500; letter-spacing: .01em; color: var(--fg-muted);
+  opacity: var(--lit); transition: color .25s, opacity var(--glide) ease-out; pointer-events: auto;
 }
-.ring-link:hover .ring-slice:not(.ring-slice-in) { filter: brightness(1.08); }
-.ring-label-in { display: none; } /* i nomi delle card sul lato di fondo creerebbero solo confusione */
+/* pulsante sulla card davanti: rende evidente che il clic apre l'editor con quel template */
+.ring-cta {
+  display: flex; justify-content: center; margin-top: calc(var(--card-h) - 26px); pointer-events: none;
+  opacity: 0; transition: opacity .3s;
+}
+.ring-cta > span {
+  padding: 3px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
+  background: var(--accent); color: var(--accent-fg); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
+}
+.ring-card[aria-current] .ring-label { color: var(--fg); font-weight: 600; }
+/* il pulsante compare al passaggio del mouse / col focus; sui dispositivi touch (niente hover) è sempre visibile sulla card davanti */
+.ring-card[aria-current] .ring-link:focus-visible .ring-cta { opacity: 1; }
+@media (hover: none) { .ring-card[aria-current] .ring-cta { opacity: .9; transition-delay: .25s; } }
+.ring-card[aria-current] .ring-link:hover { transform: translateY(-6px); }
+.ring-card[aria-current] .ring-link:hover .ring-cta { opacity: 1; }
 .ring-link:hover .ring-label, .ring-link:focus-visible .ring-label { color: var(--accent-text); }
-.ring-link:focus-visible .ring-slice { box-shadow: inset 0 0 0 2px var(--accent); }
+.ring-link:focus-visible .ring-slice { box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+.ring-link:focus-visible .ring-slice:nth-of-type(1) { box-shadow: inset 2px 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+.ring-link:focus-visible .ring-slice:nth-of-type(9) { box-shadow: inset -2px 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .ring-stage { flex: none; height: auto; perspective: none; overflow-x: auto; mask-image: none; -webkit-mask-image: none; cursor: auto !important; }
+  .ring-stage::before { display: none; }
   .ring-tilt { position: static; transform: none; }
   .ring-track { position: static; display: flex; gap: 1.25rem; width: max-content; height: auto; margin: 0 auto; padding: 0 1.5rem; transform: none !important; transition: none !important; }
   .ring-card { position: relative; width: var(--card-w); height: calc(var(--card-h) + 2rem); }
-  .ring-slice { left: calc(var(--j) * var(--card-w) / var(--slices)); transform: none; backface-visibility: visible; }
-  .ring-slice-in, .ring-label-in { display: none; }
-  .ring-label { transform: none; }
+  .ring-slice { left: calc(var(--j) * var(--card-w) / var(--slices)); transform: none; backface-visibility: visible; opacity: 1; }
+  .ring-back, .ring-cta { display: none; }
+  .ring-label { transform: none; opacity: 1; }
 }
 
 .ring-section { display: flex; flex-direction: column; flex: none; }
@@ -127,6 +161,15 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 }
 .phone-lens-1 { left: 5%; top: 8%; } .phone-lens-2 { left: 5%; bottom: 8%; } .phone-lens-3 { left: 24%; top: 30%; }
 .phone-flash { position: absolute; right: 12%; top: 16%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(#fff6e0, #d9c9a8); }
+.phone-hint {
+  position: absolute; left: 50%; top: calc(100% + var(--ph) * 0.06); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; white-space: nowrap; pointer-events: none;
+  font-size: 12px; font-weight: 500; color: var(--fg-muted);
+  animation: phone-hint 2.4s ease-in-out infinite; transition: opacity .4s;
+}
+.phone-hint svg { color: var(--accent-text); }
+.phone-hint.is-hidden { opacity: 0 !important; animation: none; }
+@keyframes phone-hint { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 .phone-btn { position: absolute; width: 3px; border-radius: 2px; background: linear-gradient(90deg, #c45a19, #f19a55); }
 .phone-btn-action { left: -2px; top: 17%; height: 5%; }
 .phone-btn-vol-up { left: -2px; top: 25%; height: 9%; }
