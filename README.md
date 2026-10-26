@@ -8,6 +8,7 @@ No watermark, no paywall, no ads.
 
 Live: https://michelesanfilippo.github.io/gitFolio/
 
+
 ## Development
 
 ```bash
