@@ -10,8 +10,7 @@ Live: https://michelesanfilippo.github.io/gitFolio/
 
 
 ## Demo
-
-[![gitFolio demo: from the GitHub repo to a new CV, saved and shared](docs/demo/demo-preview.webp)](https://michelesanfilippo.github.io/gitFolio/brand/demo-desktop.mp4)
+https://github.com/user-attachments/assets/252eab41-5a31-4f11-90ac-1f10ac6265a9
 
 ## Development
 
