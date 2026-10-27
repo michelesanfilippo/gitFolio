@@ -39,3 +39,23 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # Nell'elenco "Deployments" del repo resta solo il deploy più recente: i precedenti vengono disattivati ed eliminati.
+  cleanup:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - name: Delete older github-pages deployments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          ids=$(gh api --paginate "repos/$REPO/deployments?environment=github-pages&per_page=100" --jq '.[].id' | sort -rn)
+          latest=$(echo "$ids" | head -n 1)
+          for id in $(echo "$ids" | tail -n +2); do
+            # GitHub elimina solo deployment inattivi: prima si marca "inactive", poi si cancella
+            gh api -X POST "repos/$REPO/deployments/$id/statuses" -f state=inactive --silent || true
+            gh api -X DELETE "repos/$REPO/deployments/$id" --silent && echo "deleted $id" || echo "could not delete $id"
+          done
+          echo "kept $latest"

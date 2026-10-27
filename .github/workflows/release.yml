@@ -1,0 +1,42 @@
+name: Release
+# A ogni push su main: nuova release con tag. Prima release v1.0.0, poi si incrementa la patch (v1.0.1, v1.0.2...).
+# Per un salto di minor/major basta creare a mano il tag (es. v1.1.0): le release successive ripartono da lì.
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false # push ravvicinati: le release escono in ordine, nessuna saltata
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # serve la storia completa per tag e note di rilascio
+      - name: Next version
+        id: version
+        run: |
+          last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          if [ -z "$last" ]; then
+            next=v1.0.0
+          else
+            IFS=. read -r major minor patch <<< "${last#v}"
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "last=$last" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "Last: ${last:-none}  Next: $next"
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT: ${{ steps.version.outputs.next }}
+          LAST: ${{ steps.version.outputs.last }}
+        run: |
+          # il tag creato con GITHUB_TOKEN non avvia altri workflow: nessun ciclo
+          if [ -n "$LAST" ]; then
+            gh release create "$NEXT" --target "$GITHUB_SHA" --title "$NEXT" --generate-notes --notes-start-tag "$LAST" --latest
+          else
+            gh release create "$NEXT" --target "$GITHUB_SHA" --title "$NEXT" --generate-notes --latest
+          fi
