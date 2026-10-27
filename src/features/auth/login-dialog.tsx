@@ -39,6 +39,7 @@ export function LoginDialog() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState(false);
+  const [shake, setShake] = useState(0); // cambia a ogni errore: riavvia l'animazione
 
   useEffect(() => { if (loginOpen) { setMode(loginMode); setError(undefined); setConfirm(false); } }, [loginOpen, loginMode]);
   useEffect(() => { if (status === 'in') closeLogin(); }, [status, closeLogin]);
@@ -49,12 +50,12 @@ export function LoginDialog() {
     const result = mode === 'login' ? await auth.signInEmail(email.trim(), password) : await auth.signUpEmail(email.trim(), password);
     setBusy(false);
     if (result === CONFIRM_EMAIL) return setConfirm(true);
-    if (result) setError(result);
+    if (result) { setError(result); setShake((n) => n + 1); }
   }
   async function oauth(provider: 'google' | 'github' | 'linkedin_oidc') {
     setBusy(true); setError(undefined);
     const err = await auth.signInOAuth(provider);
-    if (err) { setError(err); setBusy(false); }
+    if (err) { setError(err); setShake((n) => n + 1); setBusy(false); }
   }
 
   return (
@@ -74,7 +75,7 @@ export function LoginDialog() {
             <Button variant="secondary" className={oauthCls} disabled={busy} onClick={() => void oauth('linkedin_oidc')} icon={<LinkedInIcon />}>Continue with LinkedIn</Button>
           </div>
           <p className="flex items-center gap-3 text-xs text-muted before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">or with email</p>
-          <form onSubmit={submit} className="flex flex-col gap-3" noValidate={false}>
+          <form key={shake} onSubmit={submit} className={`flex flex-col gap-3 ${shake ? 'shake' : ''}`} noValidate={false}>
             <label className="flex flex-col gap-1.5 text-xs text-muted">Email
               <input className={inputCls} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
             </label>

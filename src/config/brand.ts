@@ -2,6 +2,8 @@
 export const brand = {
   name: 'gitFolio',
   repoUrl: 'https://github.com/michelesanfilippo/gitFolio',
+  /** URL pubblico del sito (anteprime social, link assoluti). */
+  siteUrl: 'https://michelesanfilippo.github.io/gitFolio',
   /** Contatto per privacy e assistenza (pagina /privacy). Vuoto = solo GitHub. */
   contactEmail: '',
   logo: '/brand/logo-full.png',

@@ -33,7 +33,7 @@ export function GithubStars({ initial, icon }: { initial?: number; icon: ReactNo
   }, []);
 
   return (
-    <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer" title="Star gitFolio on GitHub" onClick={() => { clicked.current = true; }}
+    <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer" data-tip="Star gitFolio on GitHub" data-tip-side="bottom" onClick={() => { clicked.current = true; }}
        aria-label={stars === undefined ? `${brand.name} on GitHub` : `${brand.name} on GitHub: ${stars} ${stars === 1 ? 'star' : 'stars'}`}
        className="-m-1.5 flex items-center gap-2 rounded-md p-1.5 text-sm text-muted transition-colors duration-200 hover:text-accent-text focus-visible:text-accent-text">
       {icon}

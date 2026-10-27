@@ -271,6 +271,7 @@ export function DesignLab() {
 
   return (
     <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <h1 className="sr-only">CV editor</h1>
       <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
         <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="relative grid shrink-0 grid-cols-6 border-b border-border">
           {TABS.map(({ id, label, Icon }) => (
@@ -313,8 +314,8 @@ export function DesignLab() {
             <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 min-w-0 flex-1 accent-[var(--accent)] sm:w-52 sm:flex-none" />
             <output aria-live="off" className="w-12 shrink-0 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
             <span className="flex shrink-0 gap-1.5">
-              <Button variant="outline" size="icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}><Minus /></Button>
-              <Button variant="outline" size="icon" aria-label="Zoom in" title="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}><Plus /></Button>
+              <Button variant="outline" size="icon" aria-label="Zoom out" data-tip="Zoom out" data-tip-side="bottom" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}><Minus /></Button>
+              <Button variant="outline" size="icon" aria-label="Zoom in" data-tip="Zoom in" data-tip-side="bottom" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}><Plus /></Button>
             </span>
           </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}

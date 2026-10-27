@@ -52,8 +52,8 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .btn-ghost:hover:not(:disabled) { color: var(--fg); background: color-mix(in srgb, var(--border) 70%, transparent); transform: none; }
 .btn-danger { color: var(--fg-muted); background: transparent; }
 .btn-danger:hover:not(:disabled) { color: #fca5a5; background: rgb(248 113 113 / .12); transform: none; }
-.btn-danger-solid { background: #ef4444; color: #fff; }
-.btn-danger-solid:hover:not(:disabled) { background: #f87171; box-shadow: 0 10px 24px -10px rgb(239 68 68 / .6); }
+.btn-danger-solid { background: #dc2626; color: #fff; } /* bianco su #dc2626 = 5.2:1 (su #ef4444 sarebbe 3.8) */
+.btn-danger-solid:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 10px 24px -10px rgb(220 38 38 / .6); }
 /* caricamento: lo spinner copre il contenuto, che resta invisibile ma occupa spazio (nessun salto di larghezza) */
 .btn[aria-busy="true"] > :not(.btn-spinner) { visibility: hidden; }
 .btn-spinner { position: absolute; inset: 0; display: grid; place-items: center; }
@@ -257,3 +257,37 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-thin::-webkit-scrollbar-thumb { border-radius: 8px; background: color-mix(in srgb, var(--fg-muted) 45%, transparent); }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+/* Finestre: entrano con scala + fade (anche lo sfondo), escono specularmente (.modal-closing per 180 ms, vedi Modal). */
+.modal[open] { animation: modal-in var(--dur-slow) var(--ease-spring); }
+.modal[open]::backdrop { animation: fade-in var(--dur) var(--ease-out); }
+.modal.modal-closing { animation: modal-out 180ms var(--ease-out) forwards; }
+.modal.modal-closing::backdrop { animation: fade-out 180ms var(--ease-out) forwards; }
+@keyframes modal-in { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes modal-out { to { opacity: 0; transform: scale(.97) translateY(4px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+
+/* Errore in un modulo: breve scuotimento orizzontale. */
+.shake { animation: shake .45s var(--ease-out); }
+@keyframes shake { 15%, 45%, 75% { transform: translateX(-5px); } 30%, 60%, 90% { transform: translateX(5px); } }
+
+/* Cliccabili sempre col cursore a mano (Tailwind imposta "default" sui pulsanti). */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { cursor: pointer; }
+
+/* Tooltip del brand: data-tip="testo"; compare dopo una breve attesa al passaggio del mouse o col focus da tastiera. */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(-50%, 4px);
+  padding: .3rem .55rem; border-radius: .4rem; white-space: nowrap; pointer-events: none; z-index: 60;
+  background: var(--fg); color: var(--bg); font-size: .72rem; font-weight: 500; letter-spacing: 0; text-transform: none;
+  opacity: 0; transition: opacity var(--dur-fast) var(--ease-out) 0s, transform var(--dur-fast) var(--ease-out) 0s;
+}
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition-delay: .45s; }
+[data-tip][data-tip-side="bottom"]::after { bottom: auto; top: calc(100% + 8px); transform: translate(-50%, -4px); }
+[data-tip][data-tip-side="bottom"]:hover::after, [data-tip][data-tip-side="bottom"]:focus-visible::after { transform: translate(-50%, 0); }
+@media (hover: none) { [data-tip]::after { display: none; } }
+
+/* Scheletri di caricamento. */
+.skeleton { background: linear-gradient(90deg, var(--border) 25%, color-mix(in srgb, var(--border) 55%, var(--surface)) 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: .5rem; }
+@keyframes shimmer { to { background-position: -200% 0; } }

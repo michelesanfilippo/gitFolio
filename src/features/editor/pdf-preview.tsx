@@ -53,5 +53,5 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
     return () => { cancelled = true; };
   }, [buffer, zoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={host} className="scroll-thin relative h-full overflow-auto p-4" />;
+  return <div ref={host} role="region" aria-label="CV preview" tabIndex={0} className="scroll-thin relative h-full overflow-auto p-4 focus-visible:outline-offset-[-2px]" />;
 }

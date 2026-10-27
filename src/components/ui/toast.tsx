@@ -53,7 +53,7 @@ function Item({ t }: { t: Toast }) {
         ? <span className="toast-check mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent text-accent-fg"><Check className="size-3.5" strokeWidth={3} aria-hidden /></span>
         : <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-300" aria-hidden />}
       <span className="min-w-0 flex-1 leading-snug">{t.text}</span>
-      <button type="button" onClick={() => dismiss(t.id)} aria-label="Dismiss" className="-m-1 rounded-md p-1 text-muted transition-colors hover:bg-border hover:text-fg"><X className="size-4" aria-hidden /></button>
+      <button type="button" onClick={() => dismiss(t.id)} aria-label="Dismiss" data-tip="Dismiss" className="-m-1 rounded-md p-1 text-muted transition-colors hover:bg-border hover:text-fg"><X className="size-4" aria-hidden /></button>
     </div>
   );
 }

@@ -13,8 +13,8 @@ export function HeaderActions({ locale }: { locale: string }) {
     return (
       <>
         {/* su smartphone e tablet solo icone: il logo non si schiaccia */}
-        <Button variant="ghost" onClick={() => void signOut()} aria-label="Logout" title="Logout" icon={<LogOut />} className="px-3 font-normal"><span className="hidden lg:inline">Logout</span></Button>
-        <ButtonLink variant="outline" href={withBasePath(`/${locale}/dashboard/`)} aria-label="Dashboard" title="Dashboard" icon={<LayoutDashboard />} className="px-2.5 lg:px-3.5">
+        <Button variant="ghost" onClick={() => void signOut()} aria-label="Logout" data-tip="Logout" data-tip-side="bottom" icon={<LogOut />} className="px-3 font-normal"><span className="hidden lg:inline">Logout</span></Button>
+        <ButtonLink variant="outline" href={withBasePath(`/${locale}/dashboard/`)} aria-label="Dashboard" data-tip="Dashboard" data-tip-side="bottom" icon={<LayoutDashboard />} className="px-2.5 lg:px-3.5">
           <span className="hidden lg:inline">Dashboard</span>
         </ButtonLink>
       </>

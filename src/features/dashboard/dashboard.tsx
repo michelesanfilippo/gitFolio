@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, FilePlus2, Link2Off, Share2, Trash2, UserRound } from 'lucide-react';
+import { Check, Copy, FilePlus2, Link2Off, Share2, Sparkles, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button, ButtonLink } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -14,6 +14,32 @@ const fmtDate = (iso: string) => new Intl.DateTimeFormat('en', { dateStyle: 'med
 
 function Centered({ children }: { children: ReactNode }) {
   return <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-24 text-center">{children}</div>;
+}
+
+/** Scheletro della pagina mentre si attende la sessione o l'elenco dei template. */
+function CardSkeletons({ n = 3 }: { n?: number }) {
+  return (
+    <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-hidden>
+      {Array.from({ length: n }, (_, i) => (
+        <li key={i} className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface" style={{ animationDelay: `${i * 120}ms` }}>
+          <div className="skeleton aspect-[1/1.414] rounded-none" />
+          <div className="flex flex-col gap-2 p-4"><div className="skeleton h-4 w-2/3" /><div className="skeleton h-3 w-1/2" /></div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 lg:grid-cols-[320px_1fr]" aria-busy="true" aria-label="Loading your dashboard">
+      <aside className="flex h-fit flex-col gap-5 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center gap-3"><div className="skeleton size-14 rounded-full" /><div className="flex flex-1 flex-col gap-2"><div className="skeleton h-4 w-1/2" /><div className="skeleton h-3 w-3/4" /></div></div>
+        <div className="skeleton h-10 w-full" /><div className="skeleton h-8 w-1/3" />
+      </aside>
+      <section><div className="mb-5 flex flex-col gap-2"><div className="skeleton h-7 w-48" /><div className="skeleton h-4 w-72" /></div><CardSkeletons /></section>
+    </div>
+  );
 }
 
 export function Dashboard({ locale }: { locale: string }) {
@@ -34,7 +60,7 @@ export function Dashboard({ locale }: { locale: string }) {
   useEffect(() => { if (status === 'in') void load(); }, [status, load]);
   useEffect(() => { setUsername(profile?.username ?? ''); setPhoto(profile?.default_photo ?? undefined); }, [profile]);
 
-  if (status === 'loading') return <Centered><p className="text-muted">Loading…</p></Centered>;
+  if (status === 'loading') return <PageSkeleton />;
   if (status === 'disabled') return <Centered><h1 className="text-2xl font-bold">Dashboard</h1><p className="text-muted">Accounts are not enabled on this site yet.</p></Centered>;
   if (status === 'out') {
     return (
@@ -138,15 +164,21 @@ export function Dashboard({ locale }: { locale: string }) {
           ) : null}
         </div>
         {error ? <p role="alert" className="mb-4 rounded-md border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-300">{error}</p> : null}
+        {!items && !error ? <CardSkeletons /> : null}
         {items && items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted">
-            <p>No saved templates yet.</p>
-            <p className="mt-1 text-sm">Design a CV in the editor and press <strong className="text-fg">Save template</strong>.</p>
+          <div className="pop flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={withBasePath("/brand/logo-mark.png")} alt="" width={64} height={64} className="size-16 opacity-90" />
+            <div>
+              <h2 className="text-lg font-semibold">No saved templates yet</h2>
+              <p className="mt-1 max-w-sm text-sm text-muted">Design a CV in the editor and press <strong className="text-fg">Save template</strong>: it will appear here, ready to reopen or share.</p>
+            </div>
+            <ButtonLink href={editorHref('?new=1')} size="lg" icon={<Sparkles />}>Create your first CV</ButtonLink>
           </div>
         ) : null}
         <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {items?.map((t) => (
-            <li key={t.id} className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-accent">
+            <li key={t.id} className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition-[translate,box-shadow,border-color] duration-200 ease-out hover:-translate-y-1 hover:border-accent hover:shadow-[0_20px_40px_-20px_rgb(0_0_0/.75)] focus-within:border-accent">
               <a href={editorHref(`?t=${t.id}`)} className="block focus-visible:outline-offset-[-3px]" aria-label={`Open ${t.name}`}>
                 <span className="block aspect-[1/1.414] overflow-hidden bg-white">
                   {t.thumbnail ? (
@@ -159,7 +191,8 @@ export function Dashboard({ locale }: { locale: string }) {
                   <span className="block text-xs text-muted">Edited {fmtDate(t.updated_at)}</span>
                 </span>
               </a>
-              <span className="m-3 mt-2 flex items-center gap-1">
+              {/* azioni visibili al passaggio del mouse o col focus; sempre visibili dove non c'è hover (touch) */}
+              <span className="m-3 mt-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
                 <Button variant="ghost" size="sm" onClick={() => void openShare(t)} aria-label={`Share ${t.name}`} icon={<Share2 />}
                   className={`font-medium hover:!bg-accent/10 hover:!text-accent-text ${t.share_id ? 'text-accent-text' : ''}`}>Share</Button>
                 <Button variant="danger" size="sm" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`} icon={<Trash2 />} className="ml-auto font-medium">Delete</Button>
