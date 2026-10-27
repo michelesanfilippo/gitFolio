@@ -87,7 +87,7 @@ export function LoginDialog() {
           </form>
           <p className="text-center text-sm text-muted">
             {mode === 'login' ? 'New here? ' : 'Already have an account? '}
-            <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(undefined); }} className="font-semibold text-accent-text underline-offset-4 hover:underline">
+            <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(undefined); }} className="py-1.5 font-semibold text-accent-text underline-offset-4 hover:underline">
               {mode === 'login' ? 'Register now' : 'Log in'}
             </button>
           </p>

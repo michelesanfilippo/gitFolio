@@ -25,7 +25,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
         <div className="p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
             <h2 id={titleId} className="text-xl font-bold">{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-1 text-muted hover:bg-border hover:text-fg"><X className="size-5" aria-hidden /></button>
+            <button type="button" onClick={onClose} aria-label="Close" className="-m-1 rounded-md p-2 text-muted hover:bg-border hover:text-fg"><X className="size-5" aria-hidden /></button>
           </div>
           {children}
         </div>

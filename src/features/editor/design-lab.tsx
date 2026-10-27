@@ -296,8 +296,8 @@ export function DesignLab() {
         </div>
 
         {tab !== 'content' ? (
-          <div className="shrink-0 border-t border-border px-4 py-2.5">
-            <button type="button" onClick={reset} className="flex items-center gap-2 text-xs text-muted hover:text-fg">
+          <div className="shrink-0 border-t border-border px-4 py-1">
+            <button type="button" onClick={reset} className="flex items-center gap-2 py-2 text-xs text-muted hover:text-fg">
               <RotateCcw className="size-3.5" aria-hidden /> Reset this section to defaults
             </button>
           </div>
@@ -305,12 +305,13 @@ export function DesignLab() {
       </aside>
 
       <section className="flex min-h-0 min-w-0 flex-col bg-black/20" aria-label="Preview" data-render-count={renders}>
-        <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-border px-5 py-3">
-          <div className="flex items-center gap-3 text-sm text-muted">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b border-border px-4 py-3 sm:px-5">
+          {/* su telefono lo slider si restringe e i pulsanti vanno a capo: niente scroll orizzontale */}
+          <div className="flex w-full min-w-0 items-center gap-3 text-sm text-muted sm:w-auto">
             <Search className="size-6 text-accent" aria-hidden />
-            <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 w-52 accent-[var(--accent)]" />
-            <output aria-live="off" className="w-12 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
-            <span className="flex gap-1.5">
+            <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 min-w-0 flex-1 accent-[var(--accent)] sm:w-52 sm:flex-none" />
+            <output aria-live="off" className="w-12 shrink-0 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
+            <span className="flex shrink-0 gap-1.5">
               <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
                 className="grid size-9 place-items-center rounded-lg border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-accent">
                 <Minus className="size-5" aria-hidden />
@@ -324,7 +325,7 @@ export function DesignLab() {
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
           {cloud.message}
           {draftNote ? <span role="status" className="flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto sm:gap-3">
             {cloud.saveButton}
             <LinkedInImportButton onApply={importLinkedIn} />
             <button type="button" onClick={download} disabled={!buffer}

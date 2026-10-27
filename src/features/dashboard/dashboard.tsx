@@ -160,11 +160,11 @@ export function Dashboard({ locale }: { locale: string }) {
               </a>
               <span className="m-3 mt-2 flex items-center gap-1">
                 <button type="button" onClick={() => void openShare(t)} aria-label={`Share ${t.name}`}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs hover:bg-accent/10 hover:text-accent-text ${t.share_id ? 'text-accent-text' : 'text-muted'}`}>
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-2.5 text-xs hover:bg-accent/10 hover:text-accent-text ${t.share_id ? 'text-accent-text' : 'text-muted'}`}>
                   <Share2 className="size-3.5" aria-hidden /> {t.share_id ? 'Shared' : 'Share'}
                 </button>
                 <button type="button" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`}
-                  className="ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted hover:bg-red-400/10 hover:text-red-300">
+                  className="ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-2.5 text-xs text-muted hover:bg-red-400/10 hover:text-red-300">
                   <Trash2 className="size-3.5" aria-hidden /> Delete
                 </button>
               </span>
