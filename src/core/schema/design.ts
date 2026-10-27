@@ -2,6 +2,7 @@ import { DEFAULT_SIDE, STANDARD_SECTIONS } from '../content/order';
 import type { PatternSettings } from '../pattern/patterns';
 import { defaultPattern } from '../pattern/patterns';
 import type { PhotoShape } from '../photo/shapes';
+import type { BulletId } from '../style/bullets';
 
 export interface Palette {
   id: string;
@@ -63,7 +64,7 @@ export interface ContactStyle {
 export interface StyleSettings {
   titleStyle: 'plain' | 'underline' | 'bar' | 'box' | 'overline';
   divider: 'none' | 'thin' | 'thick' | 'dotted' | 'dashed';
-  bullet: 'dot' | 'dash' | 'square' | 'arrow' | 'none';
+  bullet: BulletId;
   headerAlign: 'left' | 'center' | 'right';
   sidebarFill: boolean;
   skillStyle: 'list' | 'tags' | 'bars' | 'inline';

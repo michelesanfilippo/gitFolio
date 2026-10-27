@@ -13,7 +13,7 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
         <h3 className="text-sm font-semibold text-fg">{title}</h3>
         {hint ? <p className="mt-0.5 text-xs leading-relaxed text-muted">{hint}</p> : null}
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4">{children}</div>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-4">{children}</div>
     </section>
   );
 }

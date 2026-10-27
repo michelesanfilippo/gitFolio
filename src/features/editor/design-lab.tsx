@@ -18,6 +18,7 @@ import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel,
 import { useCloudTemplates } from './cloud';
 import { Button } from '@/components/ui/button';
 import { Toaster, toast } from '@/components/ui/toast';
+import { CvUploadButton } from './cv-upload';
 import { LinkedInImportButton } from './linkedin-import';
 import { PdfPreview } from './pdf-preview';
 
@@ -33,10 +34,10 @@ const TABS: Array<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: 'style', label: 'Style', Icon: Sparkles },
 ];
 
-const ZOOM_MIN = 0.4;
-const ZOOM_MAX = 1.2;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 1.1;
 const ZOOM_STEP = 0.1;
-const ZOOM_DEFAULT = 0.8; // all'apertura la pagina intera sta comoda nell'anteprima
+const ZOOM_DEFAULT = 0.6; // all'apertura la pagina intera sta comoda nell'anteprima
 const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10));
 
 const initialDesign = () => defaultDesign(getPalette('gitfolio'), 'gitfolio');
@@ -198,6 +199,17 @@ export function DesignLab() {
     setDocState(update);
   }, []);
 
+  /** "Upload CV": i contenuti riconosciuti nel file sostituiscono quelli dell'editor (il design resta). */
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  const importFile = useCallback((next: CvDocument, found: string[]) => {
+    photoDecided.current = true;
+    setDocState(next);
+    setDocKey((k) => k + 1);
+    if (!found.length) toast.error('No CV sections were recognized in this file. Try a PDF with selectable text or a .docx.');
+    else toast.ok(`Imported from your CV: ${found.join(', ')}. Review it in the Content tab.`);
+  }, []);
+
   const startOver = useCallback(() => {
     clearDraft();
     lastSavedJson.current = undefined;
@@ -270,7 +282,7 @@ export function DesignLab() {
   };
 
   return (
-    <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)]">
+    <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[480px_minmax(0,1fr)] xl:grid-cols-[520px_minmax(0,1fr)]">
       <h1 className="sr-only">CV editor</h1>
       <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
         <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="relative grid shrink-0 grid-cols-6 border-b border-border">
@@ -323,6 +335,7 @@ export function DesignLab() {
           {draftNote ? <span role="status" className="rise flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto sm:gap-3">
             {cloud.saveButton}
+            <CvUploadButton getDoc={() => docRef.current} onApply={importFile} />
             <LinkedInImportButton onApply={importLinkedIn} />
             <Button onClick={download} disabled={!buffer} icon={<Download />}>Download PDF</Button>
           </div>

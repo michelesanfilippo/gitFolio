@@ -1,0 +1,43 @@
+Jane Example
+Senior Product Designer
+Milan, Italy | +39 333 123 4567 | jane.example@example.com
+linkedin.com/in/jane-example | github.com/janex | janeexample.dev
+
+SUMMARY
+Product designer with 8+ years of experience shipping consumer apps. I turn fuzzy problems into
+clear flows, and I love working closely with engineers.
+
+EXPERIENCE
+Senior Product Designer – Acme Inc, Milan
+Jan 2020 – Present
+- Led the redesign of the onboarding flow, +23% activation.
+- Built the design system used by 4 product teams.
+
+Product Designer
+Globex S.p.A.
+03/2016 - 12/2019
+Designed the mobile banking app from scratch.
+- Ran 40+ usability sessions.
+
+EDUCATION
+MSc in Interaction Design – Politecnico di Milano
+2013 – 2015
+BA in Visual Communication, IUAV University of Venice, 2010 - 2013
+
+SKILLS
+Design: Figma, Sketch, Prototyping, Design systems
+Research: Interviews, Usability testing, Surveys
+
+LANGUAGES
+Italian (native), English (C1), Spanish – B1
+
+CERTIFICATIONS
+Google UX Design Certificate – Coursera, 2021
+Nielsen Norman Group UX Certification (2019)
+
+PROJECTS
+Budget Buddy – side project
+A personal finance app for couples. 10k downloads.
+
+INTERESTS
+Trail running, ceramics, typography.

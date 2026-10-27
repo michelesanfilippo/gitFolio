@@ -9,6 +9,7 @@ import type { ContactItem, CvDocument, DateRange } from '@/core/schema/cv';
 import type { DesignSettings } from '@/core/schema/design';
 import { generatePattern, patternRegion, resolvePatternColor } from '@/core/pattern/patterns';
 import { shapeBox } from '@/core/photo/shapes';
+import { bulletShape } from '@/core/style/bullets';
 import { contrastRatio, readableOn } from '@/core/theme/contrast';
 import { formatMonth, labels, type Labels } from './labels';
 
@@ -59,16 +60,23 @@ function Inlines({ items, ctx }: { items: Inline[]; ctx: Ctx }) {
   );
 }
 
+/** Segno dell'elenco: SVG (niente glifi, che dipendono dal font) scalato sul corpo del testo e centrato sulla prima riga. */
 function BulletMark({ ctx }: { ctx: Ctx }) {
-  const { bullet } = ctx.d.style;
-  const size = ctx.d.typography.bodySize;
-  const top = (size * ctx.d.typography.lineHeight) / 2 - 1.5;
+  const shape = bulletShape(ctx.d.style.bullet);
+  if (!shape) return null;
+  const { bodySize: size, lineHeight } = ctx.d.typography;
   const c = ctx.d.colors.primary;
-  if (bullet === 'none') return null;
-  const box: Style = { width: 12, paddingTop: top };
-  if (bullet === 'dot') return <View style={box}><View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: c }} /></View>;
-  if (bullet === 'square') return <View style={box}><View style={{ width: 3, height: 3, backgroundColor: c }} /></View>;
-  return <View style={{ width: 12 }}><Text style={{ color: c }}>{bullet === 'dash' ? '–' : '›'}</Text></View>;
+  const m = size * 0.8; // lato del disegno
+  const paint = (stroke?: number) => (stroke ? { fill: 'none', stroke: c, strokeWidth: stroke, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const } : { fill: c });
+  return (
+    <View style={{ width: size * 1.2, height: size * lineHeight, justifyContent: 'center' }}>
+      <Svg width={m} height={m} viewBox="0 0 10 10">
+        {shape.kind === 'circle' ? <Circle cx={shape.cx} cy={shape.cy} r={shape.r} {...paint(shape.stroke)} />
+          : shape.kind === 'rect' ? <Rect x={shape.x} y={shape.y} width={shape.w} height={shape.h} rx={shape.rx} fill={c} />
+          : <Path d={shape.d} {...paint(shape.stroke)} />}
+      </Svg>
+    </View>
+  );
 }
 
 function Rich({ blocks, ctx }: { blocks?: RichText; ctx: Ctx }) {
@@ -82,7 +90,7 @@ function Rich({ blocks, ctx }: { blocks?: RichText; ctx: Ctx }) {
           <View key={i} style={{ marginBottom: 3 }}>
             {b.items.map((item, j) => (
               <View key={j} style={{ flexDirection: 'row', marginBottom: 1.5 }} wrap={false}>
-                {b.type === 'ol' ? <Text style={{ ...ctx.body, width: 14 }}>{j + 1}.</Text> : <BulletMark ctx={ctx} />}
+                {b.type === 'ol' ? <Text style={{ ...ctx.body, width: ctx.d.typography.bodySize * 1.5 }}>{j + 1}.</Text> : <BulletMark ctx={ctx} />}
                 <Text style={{ ...ctx.body, flex: 1 }}><Inlines items={item} ctx={ctx} /></Text>
               </View>
             ))}

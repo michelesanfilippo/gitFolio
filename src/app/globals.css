@@ -60,17 +60,20 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .btn-spinner svg { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Campi (input, select, textarea): bordo lime e alone al focus; gli stessi token ovunque. */
-.field {
-  width: 100%; min-width: 0; border-radius: .5rem; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
-  padding: .5rem .7rem; font-size: .875rem; line-height: 1.25rem; outline: none;
-  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+/* Campi (input, select, textarea): bordo lime e alone al focus; gli stessi token ovunque.
+   Nel layer components: le utility Tailwind (pl-8, w-28…) devono poter vincere su larghezza e padding. */
+@layer components {
+  .field {
+    width: 100%; min-width: 0; border-radius: .5rem; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+    padding: .5rem .7rem; font-size: .875rem; line-height: 1.25rem; outline: none;
+    transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+  }
+  .field::placeholder { color: color-mix(in srgb, var(--fg-muted) 70%, transparent); }
+  .field:hover:not(:disabled):not(:focus) { border-color: color-mix(in srgb, var(--fg-muted) 45%, var(--border)); }
+  .field:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .field:disabled { opacity: .4; cursor: not-allowed; }
+  .field-surface { background: var(--surface); }
 }
-.field::placeholder { color: color-mix(in srgb, var(--fg-muted) 70%, transparent); }
-.field:hover:not(:disabled):not(:focus) { border-color: color-mix(in srgb, var(--fg-muted) 45%, var(--border)); }
-.field:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
-.field:disabled { opacity: .4; cursor: not-allowed; }
-.field-surface { background: var(--surface); }
 
 /* Entrata degli elementi della landing: in sequenza, dal basso, 8 px. */
 .rise { animation: rise var(--dur-slow) var(--ease-out) backwards; } /* backwards, non both: finita l'entrata, hover e pressione tornano a muovere l'elemento */
@@ -276,16 +279,20 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { cursor: pointer; }
 
 /* Tooltip del brand: data-tip="testo"; compare dopo una breve attesa al passaggio del mouse o col focus da tastiera. */
-[data-tip] { position: relative; }
+[data-tip] { position: relative; --tip-x: -50%; }
 [data-tip]::after {
-  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(-50%, 4px);
+  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(var(--tip-x), 4px);
   padding: .3rem .55rem; border-radius: .4rem; white-space: nowrap; pointer-events: none; z-index: 60;
   background: var(--fg); color: var(--bg); font-size: .72rem; font-weight: 500; letter-spacing: 0; text-transform: none;
   opacity: 0; transition: opacity var(--dur-fast) var(--ease-out) 0s, transform var(--dur-fast) var(--ease-out) 0s;
 }
-[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition-delay: .45s; }
-[data-tip][data-tip-side="bottom"]::after { bottom: auto; top: calc(100% + 8px); transform: translate(-50%, -4px); }
-[data-tip][data-tip-side="bottom"]:hover::after, [data-tip][data-tip-side="bottom"]:focus-visible::after { transform: translate(-50%, 0); }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(var(--tip-x), 0); transition-delay: .45s; }
+[data-tip][data-tip-side="bottom"]::after { bottom: auto; top: calc(100% + 8px); transform: translate(var(--tip-x), -4px); }
+[data-tip][data-tip-side="bottom"]:hover::after, [data-tip][data-tip-side="bottom"]:focus-visible::after { transform: translate(var(--tip-x), 0); }
+/* allineato al bordo destro dell'elemento: per i controlli al margine della pagina (il tooltip, anche invisibile, occupa
+   spazio e centrato sforerebbe la finestra creando una barra di scorrimento orizzontale) */
+[data-tip][data-tip-align="end"] { --tip-x: 0; }
+[data-tip][data-tip-align="end"]::after { left: auto; right: 0; }
 @media (hover: none) { [data-tip]::after { display: none; } }
 
 /* Scheletri di caricamento. */

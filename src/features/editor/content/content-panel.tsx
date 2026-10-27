@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowDown, ArrowUp, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp, ChevronsDownUp, ChevronsUpDown, GripVertical } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Segmented, Select, Toggle } from '@/components/ui/controls';
 import { moveWithinColumn, effectiveOrder, insertRelative, isStandard, newCustomSection, sectionTitle } from '@/core/content/order';
 import type { RichText } from '@/core/richtext/ast';
-import type { Locale } from '@/core/schema/cv';
+import type { CvDocument, Locale } from '@/core/schema/cv';
 import { RichTextEditor } from '@/features/richtext/rich-text-editor';
 import { labels } from '@/templates/labels';
 import {
@@ -13,12 +13,22 @@ import {
   ProfileEditor, ProjectsEditor, SkillsEditor, type EditorCtx,
 } from './editors';
 import { Card, DeleteButton, IconButton, TextField, VisibilityButton } from './ui';
+import { YamlEditor } from '../yaml-editor';
 
 type Base = Omit<EditorCtx, 'isOpen' | 'toggle' | 'open'>;
+
+// I contatti stanno nell'intestazione o in cima alla colonna laterale: si sceglie solo la colonna, non la posizione.
+const FIXED = new Set(['contacts']);
+
+interface Drag { id: string; over?: string; where?: 'before' | 'after' }
 
 export function ContentPanel({ base, showText, setShowText, text, onStartOver }: { base: Base; showText: boolean; setShowText: (v: boolean) => void; text?: string[]; onStartOver: () => void }) {
   const { doc, setDoc, design, set } = base;
   const [openSet, setOpenSet] = useState<Set<string>>(() => new Set(['personal']));
+  const [yamlMode, setYamlMode] = useState(false);
+  const [drag, setDrag] = useState<Drag>();
+  const dragId = useRef<string>(undefined);
+  const applyYaml = useCallback((d: CvDocument) => setDoc(() => d), [setDoc]);
   const ctx: EditorCtx = useMemo(() => ({
     ...base,
     isOpen: (id) => openSet.has(id),
@@ -36,7 +46,46 @@ export function ContentPanel({ base, showText, setShowText, text, onStartOver }:
   const setSide = (id: string, toSide: boolean) =>
     set('page', { sidebarSections: toSide ? [...design.page.sidebarSections.filter((x) => x !== id), id] : design.page.sidebarSections.filter((x) => x !== id), sectionOrder: order });
   const flowSide: ReadonlySet<string> = twoCols ? side : new Set<string>(); // con 1 colonna c'è un solo flusso
-  const moveSection = (id: string, dir: -1 | 1) => set('page', { sectionOrder: moveWithinColumn(order, flowSide, id, dir) });
+  const moveSection = (id: string, dir: -1 | 1) => { if (!FIXED.has(id)) set('page', { sectionOrder: moveWithinColumn(order, flowSide, id, dir) }); };
+
+  /* Trascinamento con il mouse (la maniglia a sinistra del titolo): si rilascia sopra o sotto un'altra sezione, anche
+     dell'altra colonna (la sezione passa in quella colonna). Da tastiera e su touch restano le frecce. */
+  // l'id trascinato sta anche in un ref: i primi dragover possono arrivare prima che React abbia ridisegnato lo stato
+  const dragStart = (e: DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    const card = (e.currentTarget as HTMLElement).closest('section');
+    if (card) e.dataTransfer.setDragImage(card, 24, 24);
+    dragId.current = id;
+    setDrag({ id });
+  };
+  const dragOver = (e: DragEvent, id: string) => {
+    const from = dragId.current;
+    if (!from || from === id || FIXED.has(id)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const r = e.currentTarget.getBoundingClientRect();
+    const where = e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+    if (drag?.over !== id || drag.where !== where) setDrag({ id: from, over: id, where });
+  };
+  const drop = (e: DragEvent, id: string) => {
+    e.preventDefault();
+    const from = dragId.current;
+    dragId.current = undefined;
+    setDrag(undefined);
+    if (!from || from === id || FIXED.has(id)) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const where = e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+    const sidebar = design.page.sidebarSections.filter((x) => x !== from);
+    set('page', { sectionOrder: insertRelative(order, from, id, where), sidebarSections: twoCols && side.has(id) ? [...sidebar, from] : twoCols ? sidebar : design.page.sidebarSections });
+  };
+  const dragEnd = () => { dragId.current = undefined; setDrag(undefined); };
+  const dropClass = (id: string) => {
+    if (!drag) return '';
+    if (drag.id === id) return 'opacity-40';
+    if (drag.over !== id) return '';
+    return drag.where === 'before' ? 'shadow-[0_-3px_0_0_var(--accent)]' : 'shadow-[0_3px_0_0_var(--accent)]';
+  };
   const toggleHidden = (id: string) => setDoc((d) => ({ ...d, hiddenSections: d.hiddenSections.includes(id) ? d.hiddenSections.filter((x) => x !== id) : [...d.hiddenSections, id] }));
   const rename = (id: string, v: string) =>
     setDoc((d) => isStandard(id)
@@ -81,13 +130,28 @@ export function ContentPanel({ base, showText, setShowText, text, onStartOver }:
   return (
     <div className="flex flex-col gap-3 pb-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs leading-relaxed text-muted">Each section is a tab: open it to edit, hide it with the eye, move it with the arrows.</p>
-        <span className="flex shrink-0 gap-1">
-          <IconButton label="Expand all sections" onClick={() => setOpenSet(new Set(allKeys))}><ChevronsUpDown className="size-4" aria-hidden /></IconButton>
-          <IconButton label="Collapse all sections" onClick={() => setOpenSet(new Set())}><ChevronsDownUp className="size-4" aria-hidden /></IconButton>
+        {yamlMode
+          ? <p className="text-xs leading-relaxed text-muted">The whole CV as text. Switch back to the form any time: nothing is lost.</p>
+          : <p className="text-xs leading-relaxed text-muted">Each section is a tab: open it to edit, hide it with the eye, drag the handle or use the arrows to move it.</p>}
+        <span className="flex shrink-0 items-center gap-1">
+          {!yamlMode ? (
+            <>
+              <IconButton accent label="Expand all sections" onClick={() => setOpenSet(new Set(allKeys))}><ChevronsUpDown className="size-4" aria-hidden /></IconButton>
+              <IconButton accent label="Collapse all sections" onClick={() => setOpenSet(new Set())}><ChevronsDownUp className="size-4" aria-hidden /></IconButton>
+            </>
+          ) : null}
+          <span role="group" aria-label="Editing mode" className="ml-1 flex overflow-hidden rounded-md border border-border text-[11px]">
+            {(['form', 'yaml'] as const).map((m) => (
+              <button key={m} type="button" aria-pressed={yamlMode === (m === 'yaml')} onClick={() => setYamlMode(m === 'yaml')}
+                className={`px-2.5 py-1.5 transition-colors duration-200 ${yamlMode === (m === 'yaml') ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-muted hover:bg-border hover:text-fg'}`}>
+                {m === 'form' ? 'Form' : 'YAML'}
+              </button>
+            ))}
+          </span>
         </span>
       </div>
 
+      {yamlMode ? <YamlEditor doc={doc} onApply={applyYaml} /> : (<>
       <Card id="personal" title="Personal details" subtitle={[doc.personal.fullName, doc.personal.headline].filter(Boolean).join(' · ')} open={ctx.isOpen('personal')} onToggle={ctx.toggle}>
         <PersonalEditor ctx={ctx} />
         <p className="text-xs text-muted">Your photo is in the <strong className="text-fg">Photo</strong> tab. Email, phone and links are in <strong className="text-fg">Contacts</strong> below.</p>
@@ -99,15 +163,27 @@ export function ContentPanel({ base, showText, setShowText, text, onStartOver }:
         const idx = flow.indexOf(id);
         const count = flow.length;
         const custom = !isStandard(id);
+        const fixed = FIXED.has(id);
         return (
           <Card key={id} id={id} open={ctx.isOpen(id)} onToggle={ctx.toggle} dimmed={hidden.has(id)}
             title={<>{titleOf(id)}{hidden.has(id) ? <span className="ml-2 rounded bg-border px-1.5 py-0.5 text-[10px] font-normal text-muted">hidden</span> : null}</>}
-            subtitle={`${summary(id)} · ${inSide && twoCols ? 'side column' : 'main column'}`}
+            subtitle={`${summary(id)} · ${inSide && twoCols ? 'side column' : 'main column'}${fixed ? ' · fixed position' : ''}`}
+            handle={fixed ? <span className="w-4 shrink-0" aria-hidden /> : (
+              <span draggable onDragStart={(e) => dragStart(e, id)} onDragEnd={dragEnd} title="Drag to move this section"
+                className="grid size-7 shrink-0 cursor-grab place-items-center rounded-md text-muted/70 hover:bg-border hover:text-fg active:cursor-grabbing" aria-hidden>
+                <GripVertical className="size-4" />
+              </span>
+            )}
+            rootProps={fixed ? undefined : { onDragOver: (e) => dragOver(e, id), onDrop: (e) => drop(e, id), className: dropClass(id) }}
             actions={
               <>
                 <VisibilityButton noun="section" visible={!hidden.has(id)} onToggle={() => toggleHidden(id)} />
-                <IconButton label="Move section up" disabled={idx <= 0} onClick={() => moveSection(id, -1)}><ArrowUp className="size-4" aria-hidden /></IconButton>
-                <IconButton label="Move section down" disabled={idx >= count - 1} onClick={() => moveSection(id, 1)}><ArrowDown className="size-4" aria-hidden /></IconButton>
+                {!fixed ? (
+                  <>
+                    <IconButton label="Move section up" disabled={idx <= 0} onClick={() => moveSection(id, -1)}><ArrowUp className="size-4" aria-hidden /></IconButton>
+                    <IconButton label="Move section down" disabled={idx >= count - 1} onClick={() => moveSection(id, 1)}><ArrowDown className="size-4" aria-hidden /></IconButton>
+                  </>
+                ) : null}
                 {custom ? <DeleteButton label="Delete section" onConfirm={() => removeCustom(id)} /> : null}
               </>
             }>
@@ -147,6 +223,7 @@ export function ContentPanel({ base, showText, setShowText, text, onStartOver }:
           <span className="text-xs text-muted">Start over: clears the draft on this device and restores the placeholder text.</span>
         </div>
       </Card>
+      </>)}
     </div>
   );
 }

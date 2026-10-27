@@ -1,4 +1,4 @@
-// Verifica: offset verticale per sezione nella colonna laterale + pulsanti zoom (40%-120%).
+// Verifica: offset verticale per sezione nella colonna laterale + pulsanti zoom (30%-110%).
 import { chromium } from 'playwright';
 
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1500, height: 1200 } });

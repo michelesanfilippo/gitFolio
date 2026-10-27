@@ -13,6 +13,7 @@ import { PHOTO_SHAPE_IDS, PHOTO_SHAPES, shapeBox } from '@/core/photo/shapes';
 import { contrastRatio, isValidHex } from '@/core/theme/contrast';
 import { generatePattern, resolvePatternColor, PATTERN_ANCHORS, PATTERN_KINDS, patternRegion, type PatternAnchor, type PatternKind } from '@/core/pattern/patterns';
 import { PhotoField } from '@/features/photo/photo-field';
+import { BULLET_IDS, BULLET_LABEL, bulletShape, type BulletId } from '@/core/style/bullets';
 
 export type SetDesign = <K extends keyof DesignSettings>(key: K, patch: Partial<DesignSettings[K]>) => void;
 interface DesignProps { design: DesignSettings; set: SetDesign }
@@ -69,7 +70,25 @@ const AnchorPreview = ({ anchor }: { anchor: PatternAnchor }) => {
   );
 };
 
-const BulletPreview = ({ glyph }: { glyph: string }) => <span className="text-lg leading-none text-fg">{glyph}</span>;
+/** Stessa geometria del PDF (core/style/bullets): ciò che si vede qui è ciò che si stampa. */
+const BulletPreview = ({ id }: { id: BulletId }) => {
+  const sh = bulletShape(id);
+  if (!sh) return <span className="text-xs text-muted">Off</span>;
+  const paint = (stroke?: number) => (stroke ? { fill: 'none', stroke: 'currentColor', strokeWidth: stroke, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const } : { fill: 'currentColor' });
+  return (
+    <span className="flex items-center gap-1.5 text-fg" aria-hidden>
+      <svg width="16" height="16" viewBox="0 0 10 10">
+        {sh.kind === 'circle' ? <circle cx={sh.cx} cy={sh.cy} r={sh.r} {...paint(sh.stroke)} /> : sh.kind === 'rect' ? <rect x={sh.x} y={sh.y} width={sh.w} height={sh.h} rx={sh.rx} fill="currentColor" /> : <path d={sh.d} {...paint(sh.stroke)} />}
+      </svg>
+      <i className="h-1 w-5 rounded bg-muted/60" />
+    </span>
+  );
+};
+
+// Le anteprime non dipendono dal design: costruite una sola volta (il pannello si ridisegna a ogni modifica del CV).
+const TITLE_OPTIONS = (['plain', 'underline', 'overline', 'bar', 'box'] as const).map((k) => ({ value: k, label: { plain: 'Plain', underline: 'Underline', overline: 'Overline', bar: 'Bar', box: 'Box' }[k], preview: <TitlePreview kind={k} /> }));
+const DIVIDER_OPTIONS = (['none', 'thin', 'thick', 'dotted', 'dashed'] as const).map((k) => ({ value: k, label: { none: 'None', thin: 'Thin', thick: 'Thick', dotted: 'Dotted', dashed: 'Dashed' }[k], preview: <DividerPreview kind={k} /> }));
+const BULLET_OPTIONS = BULLET_IDS.map((k) => ({ value: k, label: BULLET_LABEL[k], preview: <BulletPreview id={k} /> }));
 
 const SkillPreview = ({ kind }: { kind: DesignSettings['style']['skillStyle'] }) => {
   if (kind === 'tags') return <span className="flex flex-wrap justify-center gap-0.5"><i className="h-2.5 w-4 rounded-sm bg-border" /><i className="h-2.5 w-5 rounded-sm bg-border" /><i className="h-2.5 w-3 rounded-sm bg-border" /></span>;
@@ -77,6 +96,7 @@ const SkillPreview = ({ kind }: { kind: DesignSettings['style']['skillStyle'] })
   if (kind === 'list') return <span className="flex flex-col gap-0.5 text-[9px] leading-none text-fg"><span>• ipsum</span><span>• dolor</span></span>;
   return <span className="text-[9px] leading-none text-fg">ipsum · dolor</span>;
 };
+const SKILL_OPTIONS = (['tags', 'bars', 'list', 'inline'] as const).map((k) => ({ value: k, label: { tags: 'Tags', bars: 'Level bars', list: 'List', inline: 'Inline' }[k], preview: <SkillPreview kind={k} /> }));
 
 /** Per ogni sezione: colonna principale o laterale; se laterale, quanto abbassarla rispetto alla precedente. */
 function AssignList({ doc, page, onSide, onOffset }: {
@@ -284,17 +304,13 @@ export function StylePanel({ design, set }: DesignProps) {
   return (
     <>
       <Section title="Section titles">
-        <Choice label="Title style" cols={5} value={s.titleStyle} onChange={(v) => set('style', { titleStyle: v })}
-          options={(['plain', 'underline', 'overline', 'bar', 'box'] as const).map((k) => ({ value: k, label: { plain: 'Plain', underline: 'Underline', overline: 'Overline', bar: 'Bar', box: 'Box' }[k], preview: <TitlePreview kind={k} /> }))} />
+        <Choice label="Title style" cols={5} value={s.titleStyle} onChange={(v) => set('style', { titleStyle: v })} options={TITLE_OPTIONS} />
       </Section>
       <Section title="Lines between entries">
-        <Choice label="Divider" cols={5} value={s.divider} onChange={(v) => set('style', { divider: v })}
-          options={(['none', 'thin', 'thick', 'dotted', 'dashed'] as const).map((k) => ({ value: k, label: { none: 'None', thin: 'Thin', thick: 'Thick', dotted: 'Dotted', dashed: 'Dashed' }[k], preview: <DividerPreview kind={k} /> }))} />
+        <Choice label="Divider" cols={5} value={s.divider} onChange={(v) => set('style', { divider: v })} options={DIVIDER_OPTIONS} />
       </Section>
-      <Section title="Lists">
-        <Choice label="Bullet style" cols={5} value={s.bullet} onChange={(v) => set('style', { bullet: v })}
-          options={[{ value: 'dot', label: 'Dot', g: '•' }, { value: 'square', label: 'Square', g: '■' }, { value: 'dash', label: 'Dash', g: '–' }, { value: 'arrow', label: 'Arrow', g: '›' }, { value: 'none', label: 'None', g: '∅' }]
-            .map((o) => ({ value: o.value as typeof s.bullet, label: o.label, preview: <BulletPreview glyph={o.g} /> }))} />
+      <Section title="Lists" hint="Used for bullet points in descriptions and for skills shown as a list. The mark scales with the text size and is drawn, not typed, so it looks the same in every font.">
+        <Choice label="Bullet style" cols={5} value={s.bullet} onChange={(v) => set('style', { bullet: v })} options={BULLET_OPTIONS} />
       </Section>
       <Section title="Background pattern" hint="A subtle decoration behind your CV. Pick a pattern, where it starts and how visible it is. The PDF cannot blur, so visibility and fade make it softer.">
         <Choice label="Pattern" cols={4} value={design.pattern.kind} onChange={(v) => set('pattern', { kind: v })}
@@ -321,8 +337,7 @@ export function StylePanel({ design, set }: DesignProps) {
         ) : null}
       </Section>
       <Section title="Skills">
-        <Choice label="Show skills as" cols={4} value={s.skillStyle} onChange={(v) => set('style', { skillStyle: v })}
-          options={(['tags', 'bars', 'list', 'inline'] as const).map((k) => ({ value: k, label: { tags: 'Tags', bars: 'Level bars', list: 'List', inline: 'Inline' }[k], preview: <SkillPreview kind={k} /> }))} />
+        <Choice label="Show skills as" cols={4} value={s.skillStyle} onChange={(v) => set('style', { skillStyle: v })} options={SKILL_OPTIONS} />
       </Section>
     </>
   );

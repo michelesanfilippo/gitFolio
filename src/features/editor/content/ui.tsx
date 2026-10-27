@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useState, type HTMLAttributes, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { CONTACT_ICONS } from '@/core/icons/contact-icons';
 import type { ContactKind } from '@/core/schema/cv';
@@ -41,18 +41,20 @@ export function TagsField({ label, value, onChange, placeholder }: { label: stri
 }
 
 export const FieldGrid = ({ children, cols = 2 }: { children: ReactNode; cols?: 1 | 2 }) => (
-  <div className={`grid gap-3 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>{children}</div>
+  <div className={`grid gap-3 ${cols === 2 ? 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}>{children}</div>
 );
 
 /* ---------------------------------------------------------------- pulsanti */
 
-export function IconButton({ label, onClick, disabled, danger, active, children }: {
-  label: string; onClick: () => void; disabled?: boolean; danger?: boolean; active?: boolean; children: ReactNode;
+export function IconButton({ label, onClick, disabled, danger, active, accent, children }: {
+  label: string; onClick: () => void; disabled?: boolean; danger?: boolean; active?: boolean; accent?: boolean; children: ReactNode;
 }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} aria-pressed={active}
       className={`grid size-8 shrink-0 place-items-center rounded-md transition-colors duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 ${
-        danger ? 'text-muted hover:bg-red-400/10 hover:text-red-300' : active === false ? 'text-muted/60 hover:bg-border hover:text-fg' : 'text-muted hover:bg-border hover:text-fg'}`}>
+        danger ? 'text-muted hover:bg-red-400/10 hover:text-red-300'
+          : accent ? 'bg-accent/10 text-accent-text ring-1 ring-inset ring-accent/40 hover:bg-accent/20'
+          : active === false ? 'text-muted/60 hover:bg-border hover:text-fg' : 'text-muted hover:bg-border hover:text-fg'}`}>
       {children}
     </button>
   );
@@ -100,17 +102,21 @@ interface CardProps {
   actions?: ReactNode;
   dimmed?: boolean;
   variant?: 'section' | 'item';
+  /** Maniglia di trascinamento (a sinistra del titolo) e attributi per la scheda come bersaglio del rilascio. */
+  handle?: ReactNode;
+  rootProps?: HTMLAttributes<HTMLElement>;
   children: ReactNode;
 }
 
 /** Scheda richiudibile: ogni sezione (e ogni voce) è una "tab" che si apre e si chiude. */
-export function Card({ id, title, subtitle, open, onToggle, actions, dimmed, variant = 'section', children }: CardProps) {
+export function Card({ id, title, subtitle, open, onToggle, actions, dimmed, variant = 'section', handle, rootProps, children }: CardProps) {
   const item = variant === 'item';
   return (
-    <section className={`rounded-xl border ${item ? 'border-border bg-bg/40' : 'border-border bg-surface'} ${dimmed ? 'opacity-60' : ''}`}>
-      <div className="flex items-center gap-1 pr-1.5">
+    <section {...rootProps} className={`rounded-xl border transition-[box-shadow,opacity] duration-200 ${item ? 'border-border bg-bg/40' : 'border-border bg-surface'} ${dimmed ? 'opacity-60' : ''} ${rootProps?.className ?? ''}`}>
+      <div className={`flex items-center gap-1 pr-1.5 ${handle ? 'pl-1.5' : ''}`}>
+        {handle}
         <button type="button" aria-expanded={open} aria-controls={`card-${id}`} onClick={() => onToggle(id)}
-          className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 text-left ${item ? 'py-2' : 'py-3'}`}>
+          className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left ${handle ? 'pl-1 pr-3' : 'px-3'} ${item ? 'py-2' : 'py-3'}`}>
           <ChevronDown className={`size-4 shrink-0 text-muted transition-transform duration-300 ease-out ${open ? '' : '-rotate-90'}`} aria-hidden />
           <span className="min-w-0">
             <span className={`block truncate font-semibold ${item ? 'text-sm' : 'text-sm'}`}>{title}</span>
