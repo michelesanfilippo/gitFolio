@@ -26,8 +26,26 @@ const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
  * iPhone realizzato in CSS (nessuna libreria 3D): finitura arancio, spessore, Dynamic Island.
  * Dondola da solo; trascinandolo si inclina (con slancio) entro pochi gradi, poi torna lentamente di fronte.
  * Finché non viene toccato, ogni tanto accenna una rotazione per far capire che si può muovere.
- * `children` è lo schermo: per ora una schermata statica della home; in seguito si potrà sostituire con un <video>.
+ * `children` è lo schermo: di default il video demo (nuovo utente → login → primo CV).
  */
+/**
+ * Video demo nello schermo. Si scarica e parte solo se il telefono è visibile (da desktop: su mobile è nascosto) e se
+ * l'utente non ha chiesto meno animazioni; altrimenti resta il primo fotogramma come immagine fissa.
+ */
+function DemoVideo() {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || v.offsetParent === null || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    v.src = withBasePath('/brand/demo.webm');
+    void v.play().catch(() => undefined); // autoplay bloccato o formato non supportato: resta il poster
+  }, []);
+  return (
+    <video ref={ref} className="phone-img" poster={withBasePath('/brand/phone-home.webp')} width={400} height={824}
+      muted loop playsInline preload="none" aria-hidden tabIndex={-1} disablePictureInPicture />
+  );
+}
+
 export function PhoneMock({ children }: { children?: ReactNode }) {
   const scene = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -112,10 +130,7 @@ export function PhoneMock({ children }: { children?: ReactNode }) {
                   <svg viewBox="0 0 26 12" fill="none" stroke="currentColor"><rect x=".6" y=".6" width="21" height="10.8" rx="3.2" opacity=".5" /><rect x="2" y="2" width="16" height="8" rx="2" fill="currentColor" stroke="none" /><path d="M24 4v4" strokeWidth="1.6" strokeLinecap="round" opacity=".6" /></svg>
                 </span>
               </div>
-              {children ?? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="phone-img" src={withBasePath('/brand/phone-home.webp')} alt="" width={800} height={1648} loading="eager" draggable={false} />
-              )}
+              {children ?? <DemoVideo />}
             </div>
           </div>
         </div>
