@@ -2,10 +2,11 @@
 
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { CONTACT_ICONS } from '@/core/icons/contact-icons';
 import type { ContactKind } from '@/core/schema/cv';
 
-export const inputCls = 'w-full min-w-0 rounded-md border border-border bg-bg px-2.5 py-2 text-sm text-fg placeholder:text-muted/70';
+export const inputCls = 'field';
 
 /* ------------------------------------------------------------------ campi */
 
@@ -50,7 +51,7 @@ export function IconButton({ label, onClick, disabled, danger, active, children 
 }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} aria-pressed={active}
-      className={`grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+      className={`grid size-8 shrink-0 place-items-center rounded-md transition-colors duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 ${
         danger ? 'text-muted hover:bg-red-400/10 hover:text-red-300' : active === false ? 'text-muted/60 hover:bg-border hover:text-fg' : 'text-muted hover:bg-border hover:text-fg'}`}>
       {children}
     </button>
@@ -61,10 +62,9 @@ export function IconButton({ label, onClick, disabled, danger, active, children 
 export function DeleteButton({ label, onConfirm }: { label: string; onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);
   return armed ? (
-    <button type="button" aria-label={`Confirm: ${label}`} onClick={onConfirm} onBlur={() => setArmed(false)} autoFocus
-      className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-red-500 px-2 text-xs font-semibold text-white">
-      <Trash2 className="size-3.5" aria-hidden /> Confirm
-    </button>
+    <Button variant="danger-solid" size="sm" className="shrink-0 px-2" aria-label={`Confirm: ${label}`} onClick={onConfirm} onBlur={() => setArmed(false)} autoFocus icon={<Trash2 />}>
+      Confirm
+    </Button>
   ) : (
     <IconButton label={label} danger onClick={() => setArmed(true)}><Trash2 className="size-4" aria-hidden /></IconButton>
   );
@@ -72,10 +72,7 @@ export function DeleteButton({ label, onConfirm }: { label: string; onConfirm: (
 
 export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick}
-      className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-accent/50 px-3 py-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent hover:text-accent-fg">
-      <Plus className="size-4" aria-hidden /> {label}
-    </button>
+    <Button variant="outline" onClick={onClick} className="w-full border-dashed" icon={<Plus />}>{label}</Button>
   );
 }
 

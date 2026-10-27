@@ -16,6 +16,7 @@ import { analyzePdf, openPdf } from '@/lib/pdfjs';
 import { ContentPanel } from './content/content-panel';
 import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
 import { useCloudTemplates } from './cloud';
+import { Button } from '@/components/ui/button';
 import { LinkedInImportButton } from './linkedin-import';
 import { PdfPreview } from './pdf-preview';
 
@@ -297,7 +298,7 @@ export function DesignLab() {
 
         {tab !== 'content' ? (
           <div className="shrink-0 border-t border-border px-4 py-1">
-            <button type="button" onClick={reset} className="flex items-center gap-2 py-2 text-xs text-muted hover:text-fg">
+            <button type="button" onClick={reset} className="flex items-center gap-2 py-2 text-xs text-muted transition-colors duration-200 hover:text-fg">
               <RotateCcw className="size-3.5" aria-hidden /> Reset this section to defaults
             </button>
           </div>
@@ -312,14 +313,8 @@ export function DesignLab() {
             <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 min-w-0 flex-1 accent-[var(--accent)] sm:w-52 sm:flex-none" />
             <output aria-live="off" className="w-12 shrink-0 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
             <span className="flex shrink-0 gap-1.5">
-              <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
-                className="grid size-9 place-items-center rounded-lg border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-accent">
-                <Minus className="size-5" aria-hidden />
-              </button>
-              <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
-                className="grid size-9 place-items-center rounded-lg border border-accent/50 text-accent transition-colors hover:bg-accent hover:text-accent-fg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-accent">
-                <Plus className="size-5" aria-hidden />
-              </button>
+              <Button variant="outline" size="icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}><Minus /></Button>
+              <Button variant="outline" size="icon" aria-label="Zoom in" title="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}><Plus /></Button>
             </span>
           </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
@@ -328,10 +323,7 @@ export function DesignLab() {
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto sm:gap-3">
             {cloud.saveButton}
             <LinkedInImportButton onApply={importLinkedIn} />
-            <button type="button" onClick={download} disabled={!buffer}
-              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
-              <Download className="size-4" aria-hidden /> Download PDF
-            </button>
+            <Button onClick={download} disabled={!buffer} icon={<Download />}>Download PDF</Button>
           </div>
         </div>
         <div className="min-h-0 flex-1"><PdfPreview buffer={buffer} zoom={zoom} onFirstPage={(c) => { thumb.current = makeThumbnail(c); }} /></div>

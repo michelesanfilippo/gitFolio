@@ -2,6 +2,7 @@
 
 import { Check, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { MAX_TEMPLATES, type SavedCvData } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
@@ -110,10 +111,7 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
   const onSubmitName = (e: FormEvent) => { e.preventDefault(); if (nameDraft.trim()) void create(nameDraft.trim()); };
 
   const saveButton: ReactNode = status === 'in' ? (
-    <button type="button" onClick={() => void save()} disabled={!canSave || busy}
-      className="flex items-center gap-2 rounded-lg border border-accent/60 px-4 py-2.5 text-sm font-semibold text-accent-text transition-colors hover:bg-accent hover:text-accent-fg disabled:opacity-50">
-      {notice?.kind === 'ok' ? <Check className="size-4" aria-hidden /> : <Save className="size-4" aria-hidden />} Save template
-    </button>
+    <Button variant="outline" onClick={() => void save()} disabled={!canSave} loading={busy} icon={notice?.kind === 'ok' ? <Check /> : <Save />}>Save template</Button>
   ) : null;
 
   const message: ReactNode = (
@@ -133,12 +131,12 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
       <Modal open={nameOpen} onClose={() => setNameOpen(false)} title="Save template">
         <form onSubmit={onSubmitName} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-xs text-muted">Name
-            <input autoFocus required maxLength={80} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} className="rounded-md border border-border bg-bg px-3 py-2.5 text-sm text-fg" />
+            <input autoFocus required maxLength={80} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} className="field py-2.5" />
           </label>
           <p className="text-xs text-muted">Saved to your account. You can keep up to {MAX_TEMPLATES} templates and reopen them from the Dashboard.</p>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setNameOpen(false)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-border">Cancel</button>
-            <button type="submit" disabled={busy || !nameDraft.trim()} className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50">Save</button>
+            <Button variant="secondary" onClick={() => setNameOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={busy} disabled={!nameDraft.trim()}>Save</Button>
           </div>
         </form>
       </Modal>
@@ -149,10 +147,9 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
           {full?.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
               <span className="min-w-0 truncate text-sm">{t.name}</span>
-              <button type="button" disabled={busy} onClick={() => void removeFromFull(t.id)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs ${armed === t.id ? 'bg-red-500 font-semibold text-white' : 'text-muted hover:bg-red-400/10 hover:text-red-300'}`}>
-                <Trash2 className="size-3.5" aria-hidden /> {armed === t.id ? 'Click again to delete' : 'Delete'}
-              </button>
+              <Button variant={armed === t.id ? 'danger-solid' : 'danger'} size="sm" className="shrink-0" disabled={busy} onClick={() => void removeFromFull(t.id)} icon={<Trash2 />}>
+                {armed === t.id ? 'Click again to delete' : 'Delete'}
+              </Button>
             </li>
           ))}
         </ul>

@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 
 const labelCls = 'flex flex-col gap-1.5 text-xs text-muted';
-const inputCls = 'rounded-md border border-border bg-surface px-2.5 py-2 text-sm text-fg';
+const inputCls = 'field field-surface';
 
 /** Blocco con titolo e suggerimento: raggruppa controlli correlati in linguaggio semplice. */
 export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -62,7 +62,7 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
       {label}
       <span className="flex items-center gap-2">
         <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#000000'} onChange={(e) => onChange(e.target.value.toUpperCase())}
-          className="h-9 w-11 shrink-0 cursor-pointer rounded border border-border bg-transparent" aria-label={label} />
+          className="h-9 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-transparent transition-[border-color] duration-200 hover:border-muted" aria-label={label} />
         <input type="text" value={value} maxLength={7} spellCheck={false} onChange={(e) => onChange(e.target.value)} className={`${inputCls} w-full min-w-0 font-mono`} aria-label={`${label} HEX`} />
       </span>
     </label>
@@ -78,7 +78,7 @@ export function Segmented<T extends string | number>({ label, value, options, on
       <div className="flex overflow-hidden rounded-md border border-border">
         {options.map((o) => (
           <button key={String(o.value)} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}
-            className={`flex-1 px-2 py-2 text-xs ${o.value === value ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-fg hover:bg-border'}`}>
+            className={`flex-1 px-2 py-2 text-xs transition-colors duration-200 ${o.value === value ? 'bg-accent font-semibold text-accent-fg' : 'bg-surface text-fg hover:bg-border'}`}>
             {o.label}
           </button>
         ))}

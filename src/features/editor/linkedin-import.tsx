@@ -1,7 +1,8 @@
 'use client';
 
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import type { CvDocument } from '@/core/schema/cv';
 import { loadPhoto, renderPhoto } from '@/core/photo/process';
 import { useAuth, type LinkedInIdentity } from '@/features/auth/auth-context';
@@ -86,10 +87,8 @@ export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDo
           {note.ok ? <Check className="size-3.5 shrink-0 text-accent" aria-hidden /> : null} {note.text}
         </span>
       ) : null}
-      <button type="button" onClick={() => void start()} disabled={Boolean(busy)} title="Imports your name, email and photo from LinkedIn"
-        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:border-accent hover:text-accent-text disabled:opacity-60">
-        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LinkedInIcon />} Import from LinkedIn
-      </button>
+      <Button variant="secondary" onClick={() => void start()} loading={Boolean(busy)} title="Imports your name, email and photo from LinkedIn" icon={<LinkedInIcon />}
+        className="hover:!border-accent hover:!text-accent-text">Import from LinkedIn</Button>
     </span>
   );
 }

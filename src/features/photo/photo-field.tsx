@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Button, buttonClass } from '@/components/ui/button';
 import { Range } from '@/components/ui/controls';
 import { PHOTO_MAX_BYTES, PHOTO_TYPES, validatePhotoFile, type PhotoError } from '@/core/photo/crop';
 import { loadPhoto, renderPhoto, type PhotoSource } from '@/core/photo/process';
@@ -54,12 +55,12 @@ export function PhotoField({ photo, onChange }: { photo: string | undefined; onC
           <div className="grid size-14 place-items-center rounded-full border border-dashed border-border text-xs text-muted" aria-hidden>None</div>
         )}
         <div className="flex flex-wrap gap-2">
-          <label className="cursor-pointer rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-fg focus-within:outline focus-within:outline-2">
+          <label className={buttonClass({ size: 'sm', className: 'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2' })}>
             {photo ? 'Change photo' : 'Add photo'}
             <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} data-testid="photo-input" className="sr-only"
               onChange={(e) => void pick(e.target.files?.[0])} />
           </label>
-          {photo ? <button type="button" onClick={remove} className="rounded-md border border-border px-3 py-2 text-sm hover:bg-border">Remove</button> : null}
+          {photo ? <Button variant="secondary" size="sm" onClick={remove}>Remove</Button> : null}
         </div>
       </div>
       {error ? <p role="alert" className="text-xs text-red-400">{messages[error]}</p> : null}

@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { Button } from './button';
 
 /** Finestra di dialogo basata sul <dialog> nativo: focus trap, Esc e sfondo oscurato gratis. */
 export function Modal({ open, onClose, title, children, size = 'md' }: {
@@ -25,7 +26,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
         <div className="p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
             <h2 id={titleId} className="text-xl font-bold">{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" className="-m-1 rounded-md p-2 text-muted hover:bg-border hover:text-fg"><X className="size-5" aria-hidden /></button>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close" className="-m-1.5"><X aria-hidden /></Button>
           </div>
           {children}
         </div>

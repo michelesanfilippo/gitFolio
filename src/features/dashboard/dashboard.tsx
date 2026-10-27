@@ -2,6 +2,7 @@
 
 import { Check, Copy, FilePlus2, Link2Off, Share2, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Button, ButtonLink } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { withBasePath } from '@/config/brand';
 import { MAX_TEMPLATES } from '@/core/saved/saved-cv';
@@ -41,7 +42,7 @@ export function Dashboard({ locale }: { locale: string }) {
         <UserRound className="size-10 text-accent" aria-hidden />
         <h1 className="text-2xl font-bold">Your dashboard</h1>
         <p className="text-muted">Log in to see and edit your saved templates.</p>
-        <button type="button" onClick={() => auth.openLogin('login')} className="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-fg">Login</button>
+        <Button size="lg" onClick={() => auth.openLogin('login')}>Login</Button>
       </Centered>
     );
   }
@@ -107,9 +108,9 @@ export function Dashboard({ locale }: { locale: string }) {
         <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void saveProfile({ username: username.trim() }, 'Username saved.'); }}>
           <label className="flex flex-col gap-1.5 text-xs text-muted">Username
             <input value={username} onChange={(e) => setUsername(e.target.value)} minLength={2} maxLength={40} required
-              className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-fg" />
+              className="field" />
           </label>
-          <button type="submit" disabled={!nameChanged || username.trim().length < 2} className="self-start rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40">Save username</button>
+          <Button type="submit" size="sm" className="self-start" disabled={!nameChanged || username.trim().length < 2}>Save username</Button>
         </form>
 
         <div className="flex flex-col gap-3 border-t border-border pt-5">
@@ -119,8 +120,8 @@ export function Dashboard({ locale }: { locale: string }) {
           </div>
           <PhotoField photo={photo} onChange={setPhoto} />
           <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={!photoChanged || !photo} onClick={() => void saveProfile({ default_photo: photo ?? null }, 'Default photo saved.')} className="rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40">Save as default</button>
-            {profile?.default_photo ? <button type="button" onClick={() => void saveProfile({ default_photo: null }, 'Default photo removed.')} className="rounded-md border border-border px-3.5 py-2 text-sm hover:bg-border">Remove default</button> : null}
+            <Button size="sm" disabled={!photoChanged || !photo} onClick={() => void saveProfile({ default_photo: photo ?? null }, 'Default photo saved.')}>Save as default</Button>
+            {profile?.default_photo ? <Button variant="secondary" size="sm" onClick={() => void saveProfile({ default_photo: null }, 'Default photo removed.')}>Remove default</Button> : null}
           </div>
         </div>
         {msg ? <p role="status" className="text-xs text-accent-text">{msg}</p> : null}
@@ -133,7 +134,7 @@ export function Dashboard({ locale }: { locale: string }) {
             <p className="text-sm text-muted">{items ? `${count} of ${MAX_TEMPLATES} saved. Click one to keep working on it.` : 'Loading…'}</p>
           </div>
           {count < MAX_TEMPLATES ? (
-            <a href={editorHref('?new=1')} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg"><FilePlus2 className="size-4" aria-hidden /> New CV</a>
+            <ButtonLink href={editorHref('?new=1')} icon={<FilePlus2 />}>New CV</ButtonLink>
           ) : null}
         </div>
         {error ? <p role="alert" className="mb-4 rounded-md border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-300">{error}</p> : null}
@@ -159,14 +160,9 @@ export function Dashboard({ locale }: { locale: string }) {
                 </span>
               </a>
               <span className="m-3 mt-2 flex items-center gap-1">
-                <button type="button" onClick={() => void openShare(t)} aria-label={`Share ${t.name}`}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-2.5 text-xs hover:bg-accent/10 hover:text-accent-text ${t.share_id ? 'text-accent-text' : 'text-muted'}`}>
-                  <Share2 className="size-3.5" aria-hidden /> Share
-                </button>
-                <button type="button" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`}
-                  className="ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-2.5 text-xs text-muted hover:bg-red-400/10 hover:text-red-300">
-                  <Trash2 className="size-3.5" aria-hidden /> Delete
-                </button>
+                <Button variant="ghost" size="sm" onClick={() => void openShare(t)} aria-label={`Share ${t.name}`} icon={<Share2 />}
+                  className={`font-medium hover:!bg-accent/10 hover:!text-accent-text ${t.share_id ? 'text-accent-text' : ''}`}>Share</Button>
+                <Button variant="danger" size="sm" onClick={() => setToDelete(t)} aria-label={`Delete ${t.name}`} icon={<Trash2 />} className="ml-auto font-medium">Delete</Button>
               </span>
             </li>
           ))}
@@ -182,27 +178,23 @@ export function Dashboard({ locale }: { locale: string }) {
         {sharing?.url ? (
           <div className="mt-4 flex gap-2">
             <input readOnly value={sharing.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg" />
-            <button type="button" onClick={() => void copyShare()} className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg">
-              {sharing.copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} {sharing.copied ? 'Copied' : 'Copy link'}
-            </button>
+              className="field flex-1 text-xs" />
+            <Button onClick={() => void copyShare()} className="shrink-0" icon={sharing.copied ? <Check /> : <Copy />}>{sharing.copied ? 'Copied' : 'Copy link'}</Button>
           </div>
         ) : sharing?.busy ? <p className="mt-4 text-sm text-muted">Creating the link…</p> : null}
         <div className="mt-5 flex items-center justify-between gap-2">
           {sharing?.row.share_id ? (
-            <button type="button" disabled={sharing.busy} onClick={() => void stopSharing()} className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm text-muted hover:bg-red-400/10 hover:text-red-300 disabled:opacity-50">
-              <Link2Off className="size-4" aria-hidden /> Stop sharing
-            </button>
+            <Button variant="danger" disabled={sharing.busy} onClick={() => void stopSharing()} icon={<Link2Off />} className="px-2.5 font-medium">Stop sharing</Button>
           ) : <span />}
-          <button type="button" onClick={() => setSharing(undefined)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-border">Done</button>
+          <Button variant="secondary" onClick={() => setSharing(undefined)}>Done</Button>
         </div>
       </Modal>
 
       <Modal open={Boolean(toDelete)} onClose={() => setToDelete(undefined)} title="Delete this template?">
         <p className="text-sm text-muted">“{toDelete?.name}” will be permanently deleted. This cannot be undone.</p>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={() => setToDelete(undefined)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-border">Cancel</button>
-          <button type="button" onClick={() => void confirmDelete()} className="rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400">Delete</button>
+          <Button variant="secondary" onClick={() => setToDelete(undefined)}>Cancel</Button>
+          <Button variant="danger-solid" onClick={() => void confirmDelete()}>Delete</Button>
         </div>
       </Modal>
     </div>

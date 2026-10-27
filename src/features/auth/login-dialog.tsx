@@ -3,12 +3,13 @@
 import { MailCheck } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { withBasePath } from '@/config/brand';
 import { CONFIRM_EMAIL, useAuth } from './auth-context';
 
-const inputCls = 'w-full rounded-md border border-border bg-bg px-3 py-2.5 text-sm text-fg placeholder:text-muted';
-const oauthCls = 'flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:border-accent hover:text-accent-text disabled:opacity-50';
+const inputCls = 'field py-2.5';
+const oauthCls = 'w-full gap-3 bg-bg hover:border-accent hover:text-accent-text';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
@@ -68,9 +69,9 @@ export function LoginDialog() {
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2.5">
-            <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('google')}><GoogleIcon /> Continue with Google</button>
-            <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('github')}><GithubIcon /> Continue with GitHub</button>
-            <button type="button" className={oauthCls} disabled={busy} onClick={() => void oauth('linkedin_oidc')}><LinkedInIcon /> Continue with LinkedIn</button>
+            <Button variant="secondary" className={oauthCls} disabled={busy} onClick={() => void oauth('google')} icon={<GoogleIcon />}>Continue with Google</Button>
+            <Button variant="secondary" className={oauthCls} disabled={busy} onClick={() => void oauth('github')} icon={<GithubIcon />}>Continue with GitHub</Button>
+            <Button variant="secondary" className={oauthCls} disabled={busy} onClick={() => void oauth('linkedin_oidc')} icon={<LinkedInIcon />}>Continue with LinkedIn</Button>
           </div>
           <p className="flex items-center gap-3 text-xs text-muted before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">or with email</p>
           <form onSubmit={submit} className="flex flex-col gap-3" noValidate={false}>
@@ -81,9 +82,7 @@ export function LoginDialog() {
               <input className={inputCls} type="password" required minLength={8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'At least 8 characters' : ''} />
             </label>
             {error ? <p role="alert" className="rounded-md border border-red-400/40 bg-red-400/10 p-2.5 text-xs text-red-300">{error}</p> : null}
-            <button type="submit" disabled={busy} className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50">
-              {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Register now'}
-            </button>
+            <Button type="submit" loading={busy} className="w-full">{mode === 'login' ? 'Log in' : 'Register now'}</Button>
           </form>
           <p className="text-center text-sm text-muted">
             {mode === 'login' ? 'New here? ' : 'Already have an account? '}
