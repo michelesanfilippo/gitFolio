@@ -14,6 +14,7 @@ const api = () => `https://api.github.com/repos/${new URL(brand.repoUrl).pathnam
  */
 export function GithubStars({ initial, icon }: { initial?: number; icon: ReactNode }) {
   const [stars, setStars] = useState(initial);
+  const [bump, setBump] = useState(false); // piccolo balzo quando il numero cambia
   const clicked = useRef(false);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export function GithubStars({ initial, icon }: { initial?: number; icon: ReactNo
         const res = await fetch(api(), { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' });
         if (!res.ok) return;
         const n = (await res.json() as { stargazers_count?: unknown }).stargazers_count;
-        if (typeof n === 'number') setStars(n);
+        if (typeof n === 'number') setStars((prev) => { if (prev !== n) { setBump(true); window.setTimeout(() => setBump(false), 600); } return n; });
       } catch { /* offline o limite dell'API: resta il valore precedente */ }
     };
     document.addEventListener('visibilitychange', refresh);
@@ -34,10 +35,10 @@ export function GithubStars({ initial, icon }: { initial?: number; icon: ReactNo
   return (
     <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer" title="Star gitFolio on GitHub" onClick={() => { clicked.current = true; }}
        aria-label={stars === undefined ? `${brand.name} on GitHub` : `${brand.name} on GitHub: ${stars} ${stars === 1 ? 'star' : 'stars'}`}
-       className="-m-1.5 flex items-center gap-2 rounded-md p-1.5 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
+       className="-m-1.5 flex items-center gap-2 rounded-md p-1.5 text-sm text-muted transition-colors duration-200 hover:text-accent-text focus-visible:text-accent-text">
       {icon}
       {stars === undefined ? null : (
-        <span className="flex items-center gap-1 font-semibold tabular-nums" aria-hidden>
+        <span className={`flex items-center gap-1 font-semibold tabular-nums ${bump ? 'bump' : ''}`} aria-hidden>
           <Star className="size-4" /> {compact(stars)}
         </span>
       )}
