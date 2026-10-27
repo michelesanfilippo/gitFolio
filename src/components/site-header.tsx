@@ -1,4 +1,4 @@
-import { useTranslations } from 'next-intl';
+import { Star } from 'lucide-react';
 import { brand, withBasePath } from '@/config/brand';
 import { HeaderActions } from '@/features/auth/header-actions';
 
@@ -10,8 +10,24 @@ function GithubIcon() {
   );
 }
 
-export function SiteHeader({ locale }: { locale: string }) {
-  const t = useTranslations('common');
+/** Stelle del repo lette dall'API pubblica di GitHub durante la build (nessuna richiesta a terzi dal browser dei visitatori):
+ * il numero si aggiorna a ogni deploy. Se l'API non risponde il numero non viene mostrato. */
+async function repoStars(): Promise<number | undefined> {
+  const repo = new URL(brand.repoUrl).pathname.replace(/^\/|\/$/g, '');
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Accept: 'application/vnd.github+json' }, cache: 'force-cache' });
+    if (!res.ok) return undefined;
+    const n = (await res.json() as { stargazers_count?: unknown }).stargazers_count;
+    return typeof n === 'number' ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const compact = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
+export async function SiteHeader({ locale }: { locale: string }) {
+  const stars = await repoStars();
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-3">
       <a href={withBasePath(`/${locale}/`)} aria-label={brand.name} className="flex items-center">
@@ -19,12 +35,17 @@ export function SiteHeader({ locale }: { locale: string }) {
         <img src={withBasePath(brand.logo)} alt={brand.name} height={56} className="h-10 w-auto sm:h-12" />
       </a>
       <div className="flex items-center gap-3 sm:gap-4">
-        <a href={withBasePath(`/${locale}/privacy/`)} className="hidden text-sm text-muted transition-colors hover:text-fg sm:inline">Privacy</a>
+        <a href={withBasePath(`/${locale}/privacy/`)} className="hidden py-2 text-sm text-muted transition-colors hover:text-fg sm:inline">Privacy</a>
         <HeaderActions locale={locale} />
-        <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer"
-           className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
+        <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer" title="Star gitFolio on GitHub"
+           aria-label={stars === undefined ? `${brand.name} on GitHub` : `${brand.name} on GitHub: ${stars} ${stars === 1 ? 'star' : 'stars'}`}
+           className="-m-1.5 flex items-center gap-2 rounded-md p-1.5 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
           <GithubIcon />
-          <span className="hidden sm:inline">{t('star')}</span>
+          {stars === undefined ? null : (
+            <span className="flex items-center gap-1 font-semibold tabular-nums" aria-hidden>
+              <Star className="size-4" /> {compact(stars)}
+            </span>
+          )}
         </a>
       </div>
     </header>

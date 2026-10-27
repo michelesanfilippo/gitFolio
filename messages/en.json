@@ -6,8 +6,7 @@
   "common": {
     "language": "Language",
     "theme": "Theme",
-    "github": "GitHub",
-    "star": "Leave it a star"
+    "github": "GitHub"
   },
   "home": {
     "tagline": "Free & open source CV builder",
