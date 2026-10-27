@@ -11,6 +11,7 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
     if (!buffer || !host.current) return;
     let cancelled = false;
     const el = host.current;
+    el.classList.add('preview-stale'); // velo leggero: si sta rigenerando
     (async () => {
       const doc = await openPdf(buffer);
       const canvases: HTMLCanvasElement[] = [];
@@ -27,7 +28,7 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
         canvas.height = Math.floor(viewport.height);
         canvas.style.width = `${cssWidth}px`;
         canvas.style.height = `${(cssWidth / base.width) * base.height}px`;
-        canvas.className = 'mx-auto mb-4 block bg-white shadow-lg'; // block: centrata e scorre nel riquadro quando è più larga
+        canvas.className = 'preview-page mx-auto mb-4 block bg-white shadow-lg'; // block: centrata e scorre nel riquadro quando è più larga
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', `Page ${n} / ${doc.numPages}`);
         await page.render({ canvas, viewport }).promise;
@@ -35,7 +36,16 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
         canvases.push(canvas);
       }
       if (!cancelled) {
-        el.replaceChildren(...canvases); // swap atomico: nessun flicker tra due render
+        // il render precedente resta sotto, sfuma e viene rimosso: niente scatto tra due versioni
+        const old = [...el.children] as HTMLElement[];
+        for (const c of canvases) c.style.opacity = '0';
+        el.append(...canvases);
+        requestAnimationFrame(() => {
+          el.classList.remove('preview-stale');
+          for (const c of canvases) c.style.opacity = '';
+          old.forEach((o, i) => { o.classList.add('preview-out'); o.style.top = `${16 + i * ((old[0]?.offsetHeight ?? 0) + 16)}px`; });
+          window.setTimeout(() => old.forEach((o) => o.remove()), 260);
+        });
         if (canvases[0]) onFirstPage?.(canvases[0]);
       }
       void doc.loadingTask.destroy();
@@ -43,5 +53,5 @@ export function PdfPreview({ buffer, zoom, onFirstPage }: { buffer: ArrayBuffer 
     return () => { cancelled = true; };
   }, [buffer, zoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={host} className="h-full overflow-auto p-4" />;
+  return <div ref={host} className="scroll-thin relative h-full overflow-auto p-4" />;
 }

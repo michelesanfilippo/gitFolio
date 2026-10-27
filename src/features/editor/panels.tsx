@@ -229,7 +229,7 @@ export function ColorsPanel({ design, setColor, pickPalette }: { design: DesignS
             const on = design.paletteId === p.id;
             return (
               <button key={p.id} type="button" aria-pressed={on} onClick={() => pickPalette(p.id)} title={p.label}
-                className={`flex flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-colors ${on ? 'border-accent ring-1 ring-accent' : 'border-border hover:border-muted'}`}>
+                className={`flex flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 ${on ? 'border-accent ring-1 ring-accent' : 'border-border hover:border-muted'}`}>
                 <span className="flex h-11 items-end gap-0.5 rounded-md p-1.5" style={{ background: p.background, border: `1px solid ${p.divider}` }}>
                   <i className="block h-5 w-2.5 rounded-sm" style={{ background: p.primary }} />
                   <i className="block h-3 w-2.5 rounded-sm" style={{ background: p.accent }} />
@@ -330,5 +330,5 @@ export function StylePanel({ design, set }: DesignProps) {
 
 export function PanelBody({ active, id, children }: { active: boolean; id: string; children: ReactNode }) {
   // Tutti i pannelli restano montati (stato dell'editor e della foto conservato): si nascondono soltanto.
-  return <div role="tabpanel" id={`panel-${id}`} aria-labelledby={`tab-${id}`} hidden={!active} className="px-4 pb-6">{children}</div>;
+  return <div role="tabpanel" id={`panel-${id}`} aria-labelledby={`tab-${id}`} hidden={!active} className={`px-4 pb-6 ${active ? 'panel-in' : ''}`}>{children}</div>;
 }

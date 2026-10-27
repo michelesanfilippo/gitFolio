@@ -4,6 +4,7 @@ import { Check, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { toast } from '@/components/ui/toast';
 import { MAX_TEMPLATES, type SavedCvData } from '@/core/saved/saved-cv';
 import { useAuth } from '@/features/auth/auth-context';
 import { createTemplate, deleteTemplate, getTemplate, listTemplates, TemplateLimitError, updateTemplate, type TemplateRow } from '@/lib/templates-api';
@@ -26,7 +27,7 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
   const auth = useAuth();
   const { status } = auth;
   const [meta, setMeta] = useState<{ id: string; name: string } | null>(null);
-  const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string }>();
+  const [justSaved, setJustSaved] = useState(false); // spunta sul pulsante per qualche secondo dopo un salvataggio
   const [busy, setBusy] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState('My CV');
@@ -49,14 +50,16 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
     setBusy(true);
     getTemplate(id)
       .then((row) => { load(row.data, row.name); setMeta({ id: row.id, name: row.name }); })
-      .catch((e) => setNotice({ kind: 'error', text: `Could not open this template: ${errText(e)}` }))
+      .catch((e) => toast.error(`Could not open this template: ${errText(e)}`))
       .finally(() => setBusy(false));
   }, [status, load]);
 
   const flash = useCallback((text: string) => {
-    setNotice({ kind: 'ok', text });
-    window.setTimeout(() => setNotice((n) => (n?.text === text ? undefined : n)), 3500);
+    toast.ok(text);
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 3500);
   }, []);
+  const fail = (e: unknown) => toast.error(errText(e));
 
   const remember = (id: string) => {
     window.history.replaceState(null, '', `${window.location.pathname}?t=${id}`);
@@ -74,19 +77,18 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
       flash(`Saved “${row.name}” to your dashboard.`);
     } catch (e) {
       if (e instanceof TemplateLimitError) { setNameOpen(false); setFull(await listTemplates().catch(() => [])); }
-      else setNotice({ kind: 'error', text: errText(e) });
+      else fail(e);
     } finally { setBusy(false); }
   }
 
   async function save() {
     if (!canSave || busy) return;
-    setNotice(undefined);
     if (meta) {
       setBusy(true);
       try {
         await updateTemplate(meta.id, { data: getSnapshot(), thumbnail: getThumbnail() });
         flash(`Saved “${meta.name}”.`);
-      } catch (e) { setNotice({ kind: 'error', text: errText(e) }); } finally { setBusy(false); }
+      } catch (e) { fail(e); } finally { setBusy(false); }
       return;
     }
     try {
@@ -94,7 +96,7 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
       if (list.length >= MAX_TEMPLATES) return setFull(list);
       setNameDraft(`My CV ${list.length + 1}`);
       setNameOpen(true);
-    } catch (e) { setNotice({ kind: 'error', text: errText(e) }); }
+    } catch (e) { fail(e); }
   }
 
   async function removeFromFull(id: string) {
@@ -105,18 +107,17 @@ export function useCloudTemplates({ getSnapshot, getThumbnail, load, canSave }: 
       const left = (full ?? []).filter((t) => t.id !== id);
       setArmed(undefined);
       if (left.length < MAX_TEMPLATES) { setFull(null); setNameDraft(`My CV ${left.length + 1}`); setNameOpen(true); } else setFull(left);
-    } catch (e) { setNotice({ kind: 'error', text: errText(e) }); } finally { setBusy(false); }
+    } catch (e) { fail(e); } finally { setBusy(false); }
   }
 
   const onSubmitName = (e: FormEvent) => { e.preventDefault(); if (nameDraft.trim()) void create(nameDraft.trim()); };
 
   const saveButton: ReactNode = status === 'in' ? (
-    <Button variant="outline" onClick={() => void save()} disabled={!canSave} loading={busy} icon={notice?.kind === 'ok' ? <Check /> : <Save />}>Save template</Button>
+    <Button variant="outline" onClick={() => void save()} disabled={!canSave} loading={busy} icon={justSaved ? <Check /> : <Save />}>Save template</Button>
   ) : null;
 
   const message: ReactNode = (
     <>
-      {notice ? <span role={notice.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${notice.kind === 'error' ? 'text-red-400' : 'text-accent-text'}`}>{notice.text}</span> : null}
       {hasParam && status === 'out' ? (
         <span role="status" className="text-sm text-muted">
           Log in to open your saved template.{' '}

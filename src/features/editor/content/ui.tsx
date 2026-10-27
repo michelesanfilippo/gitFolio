@@ -111,7 +111,7 @@ export function Card({ id, title, subtitle, open, onToggle, actions, dimmed, var
       <div className="flex items-center gap-1 pr-1.5">
         <button type="button" aria-expanded={open} aria-controls={`card-${id}`} onClick={() => onToggle(id)}
           className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 text-left ${item ? 'py-2' : 'py-3'}`}>
-          <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${open ? '' : '-rotate-90'}`} aria-hidden />
+          <ChevronDown className={`size-4 shrink-0 text-muted transition-transform duration-300 ease-out ${open ? '' : '-rotate-90'}`} aria-hidden />
           <span className="min-w-0">
             <span className={`block truncate font-semibold ${item ? 'text-sm' : 'text-sm'}`}>{title}</span>
             {subtitle ? <span className="block truncate text-xs text-muted">{subtitle}</span> : null}
@@ -119,7 +119,11 @@ export function Card({ id, title, subtitle, open, onToggle, actions, dimmed, var
         </button>
         {actions}
       </div>
-      <div id={`card-${id}`} hidden={!open} className="flex flex-col gap-4 border-t border-border p-3.5">{children}</div>
+      <div className="fold" data-open={open}>
+        <div id={`card-${id}`} inert={!open} aria-hidden={!open} className={`border-border ${open ? 'border-t' : ''}`}>
+          <div className="flex flex-col gap-4 p-3.5">{children}</div>
+        </div>
+      </div>
     </section>
   );
 }

@@ -17,6 +17,7 @@ import { ContentPanel } from './content/content-panel';
 import { ColorsPanel, LayoutPanel, PanelBody, PhotoPanel, StylePanel, TextPanel, type SetDesign } from './panels';
 import { useCloudTemplates } from './cloud';
 import { Button } from '@/components/ui/button';
+import { Toaster, toast } from '@/components/ui/toast';
 import { LinkedInImportButton } from './linkedin-import';
 import { PdfPreview } from './pdf-preview';
 
@@ -118,22 +119,20 @@ export function DesignLab() {
       applyNormalized(local);
       lastSavedJson.current = JSON.stringify({ v: 2, content: local.content, design: local.design }); // già su disco: niente nuovo salvataggio immediato
       photoDecided.current = true;
-      setDraftNote('Restored your last draft from this device.');
-      window.setTimeout(() => setDraftNote(undefined), 6000);
+      toast.ok('Restored your last draft from this device.');
     }
     const preset = getPreset(params.get('preset'));
     if (preset) setDesign(preset.design());
     const share = params.get('share');
     if (share) {
       window.history.replaceState(null, '', window.location.pathname);
-      const note = (text: string) => { setDraftNote(text); window.setTimeout(() => setDraftNote(undefined), 8000); };
       getSharedDesign(share)
         .then((got) => {
-          if (!got) return note('This shared design is no longer available.');
+          if (!got) return toast.error('This shared design is no longer available.');
           setDesign(mergeKnown(initialDesign(), got.design));
-          note(`Design “${got.name}” applied. Your content stays as it is.`);
+          toast.ok(`Design “${got.name}” applied. Your content stays as it is.`);
         })
-        .catch(() => note('This shared design could not be opened.'));
+        .catch(() => toast.error('This shared design could not be opened.'));
     }
     autosaveOn.current = true;
   }, [applySaved, applyNormalized]);
@@ -175,7 +174,7 @@ export function DesignLab() {
     const json = JSON.stringify(snapshotRef.current());
     if (json === baselineJson.current || json === lastSavedJson.current) return;
     const timer = window.setTimeout(() => {
-      if (saveDraft(snapshotRef.current())) { lastSavedJson.current = json; setDraftNote('Draft saved on this device'); }
+      if (saveDraft(snapshotRef.current())) { lastSavedJson.current = json; setDraftNote('Draft saved on this device'); window.setTimeout(() => setDraftNote(undefined), 3000); }
     }, 800);
     return () => window.clearTimeout(timer);
   }, [doc, design, inAccount]);
@@ -207,8 +206,7 @@ export function DesignLab() {
     setDocKey((k) => k + 1);
     photoDecided.current = false;
     window.history.replaceState(null, '', window.location.pathname);
-    setDraftNote('Started over with the placeholder CV.');
-    window.setTimeout(() => setDraftNote(undefined), 4000);
+    toast.ok('Started over with the placeholder CV.');
   }, []);
 
   useEffect(() => {
@@ -274,18 +272,20 @@ export function DesignLab() {
   return (
     <div className="grid h-[calc(100dvh-4.6rem)] grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col border-r border-border" aria-label="Customize your CV">
-        <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="grid shrink-0 grid-cols-6 border-b border-border">
+        <div role="tablist" aria-label="Customization sections" onKeyDown={onTabKey} className="relative grid shrink-0 grid-cols-6 border-b border-border">
           {TABS.map(({ id, label, Icon }) => (
             <button key={id} id={`tab-${id}`} role="tab" type="button" aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1}
               onClick={() => setTab(id)}
-              className={`flex flex-col items-center gap-1 border-b-2 px-1 py-3 text-[11px] transition-colors ${tab === id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg'}`}>
-              <Icon className={`size-5 ${tab === id ? 'text-accent-text' : ''}`} aria-hidden />
+              className={`flex flex-col items-center gap-1 px-1 py-3 text-[11px] transition-colors duration-200 ${tab === id ? 'text-fg' : 'text-muted hover:text-fg'}`}>
+              <Icon className={`size-5 transition-colors duration-200 ${tab === id ? 'text-accent-text' : ''}`} aria-hidden />
               {label}
             </button>
           ))}
+          {/* indicatore unico che scorre sotto la scheda attiva */}
+          <span aria-hidden className="tab-indicator pointer-events-none absolute bottom-[-1px] left-0 h-0.5 w-1/6 bg-accent" style={{ transform: `translateX(${TABS.findIndex((t) => t.id === tab) * 100}%)` }} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto pt-4">
           <PanelBody id="content" active={tab === 'content'}>
             <ContentPanel base={{ doc, setDoc, design, set, docKey }} showText={showText} setShowText={setShowText} text={text} onStartOver={startOver} />
           </PanelBody>
@@ -319,7 +319,7 @@ export function DesignLab() {
           </div>
           {error ? <span role="alert" className="text-sm text-red-400">Error: {error}</span> : null}
           {cloud.message}
-          {draftNote ? <span role="status" className="flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
+          {draftNote ? <span role="status" className="rise flex items-center gap-1.5 text-xs text-muted"><Check className="size-3.5 text-accent" aria-hidden /> {draftNote}</span> : null}
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto sm:gap-3">
             {cloud.saveButton}
             <LinkedInImportButton onApply={importLinkedIn} />
@@ -329,6 +329,7 @@ export function DesignLab() {
         <div className="min-h-0 flex-1"><PdfPreview buffer={buffer} zoom={zoom} onFirstPage={(c) => { thumb.current = makeThumbnail(c); }} /></div>
       </section>
       {cloud.dialogs}
+      <Toaster />
     </div>
   );
 }

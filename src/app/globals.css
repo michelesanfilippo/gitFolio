@@ -228,3 +228,32 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 /* Onde della landing: ogni path copre due larghezze (da -W a W) e scorre di una larghezza (1600 unità) in loop. */
 .hero-wave { animation: wave-drift linear infinite; will-change: transform; }
 @keyframes wave-drift { from { transform: translateX(0); } to { transform: translateX(1600px); } }
+
+/* Notifiche: entrano da destra, escono sfumando; la spunta "scatta" con una piccola molla. */
+.toast { animation: toast-in var(--dur-slow) var(--ease-spring) both; }
+.toast-leave { animation: toast-out var(--dur) var(--ease-out) forwards; }
+.toast-check { animation: pop .5s var(--ease-spring) .12s both; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(16px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(6px) scale(.98); } }
+
+/* Schede dell'editor: l'indicatore scorre da una scheda all'altra; il pannello appare con un breve fade. */
+.tab-indicator { transition: transform var(--dur-slow) var(--ease-out); }
+.panel-in { animation: panel-in var(--dur) var(--ease-out) both; }
+@keyframes panel-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Sezioni richiudibili (.fold: "collapse" è già una utility Tailwind = visibility:collapse): altezza animata (griglia 0fr → 1fr), contenuto non raggiungibile quando chiuse (inert). */
+.fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur-slow) var(--ease-out); }
+.fold[data-open="true"] { grid-template-rows: 1fr; }
+.fold > * { min-height: 0; overflow: hidden; }
+.fold[data-open="true"] > * { overflow: visible; }
+
+/* Anteprima PDF: il render precedente resta finché il nuovo è pronto, poi sfuma; mentre si rigenera un velo leggero. */
+.preview-page { transition: opacity var(--dur) var(--ease-out); }
+.preview-stale { opacity: .78; }
+.preview-out { position: absolute; left: 0; right: 0; opacity: 0 !important; pointer-events: none; }
+
+/* Barre di scorrimento sottili e scure, in tema. */
+.scroll-thin { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--fg-muted) 45%, transparent) transparent; }
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { border-radius: 8px; background: color-mix(in srgb, var(--fg-muted) 45%, transparent); }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }

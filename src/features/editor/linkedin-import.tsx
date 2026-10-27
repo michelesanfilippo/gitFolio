@@ -1,8 +1,8 @@
 'use client';
 
-import { Check } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import type { CvDocument } from '@/core/schema/cv';
 import { loadPhoto, renderPhoto } from '@/core/photo/process';
 import { useAuth, type LinkedInIdentity } from '@/features/auth/auth-context';
@@ -32,17 +32,10 @@ async function photoFromUrl(url: string): Promise<string> {
 export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDocument) => CvDocument) => void }) {
   const auth = useAuth();
   const [busy, setBusy] = useState<'login' | 'import'>();
-  const [note, setNote] = useState<{ ok: boolean; text: string }>();
   const abort = useRef<AbortController>(undefined);
-  const noteTimer = useRef(0);
   const li = auth.linkedIn;
 
-  const show = useCallback((ok: boolean, text: string) => {
-    setNote({ ok, text });
-    window.clearTimeout(noteTimer.current);
-    noteTimer.current = window.setTimeout(() => setNote(undefined), ok ? 6000 : 9000);
-  }, []);
-  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
+  const show = useCallback((ok: boolean, text: string) => { if (ok) toast.ok(text); else toast.error(text); }, []);
 
   const importFrom = useCallback(async (id: LinkedInIdentity) => {
     sessionStorage.removeItem(PENDING_KEY);
@@ -60,7 +53,6 @@ export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDo
   }, [li, importFrom]);
 
   async function start() {
-    setNote(undefined);
     if (auth.status === 'disabled') return show(false, "LinkedIn sign-in isn't enabled on this site yet.");
     if (li) return void importFrom(li);
     setBusy('login');
@@ -81,10 +73,6 @@ export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDo
         <span role="status" className="flex items-center gap-1.5 text-xs text-muted">
           Finish signing in in the LinkedIn window…
           <button type="button" onClick={() => abort.current?.abort()} className="underline hover:text-fg">Cancel</button>
-        </span>
-      ) : note ? (
-        <span role={note.ok ? 'status' : 'alert'} className={`flex max-w-xs items-center gap-1.5 text-xs ${note.ok ? 'text-muted' : 'text-red-400'}`}>
-          {note.ok ? <Check className="size-3.5 shrink-0 text-accent" aria-hidden /> : null} {note.text}
         </span>
       ) : null}
       <Button variant="secondary" onClick={() => void start()} loading={Boolean(busy)} title="Imports your name, email and photo from LinkedIn" icon={<LinkedInIcon />}
