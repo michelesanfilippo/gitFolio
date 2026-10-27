@@ -9,6 +9,14 @@ No watermark, no paywall, no ads.
 Live: https://michelesanfilippo.github.io/gitFolio/
 
 
+## Demo
+
+[![gitFolio demo: from the GitHub repo to a saved and shared CV](docs/demo/demo-preview.webp)](https://michelesanfilippo.github.io/gitFolio/brand/demo-desktop.webm)
+
+From the GitHub repo to the live site: log in with GitHub, start a new CV (the default photo is added automatically),
+edit it, save it to the Dashboard and share its design with a link.
+Click the preview to watch the full-quality video. Recorded on the real interface with a simulated login and sample data.
+
 ## Development
 
 ```bash
