@@ -1,6 +1,6 @@
-import { Star } from 'lucide-react';
 import { brand, withBasePath } from '@/config/brand';
 import { HeaderActions } from '@/features/auth/header-actions';
+import { GithubStars } from './github-stars';
 
 function GithubIcon() {
   return (
@@ -10,8 +10,8 @@ function GithubIcon() {
   );
 }
 
-/** Stelle del repo lette dall'API pubblica di GitHub durante la build (nessuna richiesta a terzi dal browser dei visitatori):
- * il numero si aggiorna a ogni deploy. Se l'API non risponde il numero non viene mostrato. */
+/** Stelle del repo lette dall'API pubblica di GitHub durante la build (valore iniziale; GithubStars lo aggiorna dopo un click).
+ * Se l'API non risponde il numero non viene mostrato. */
 async function repoStars(): Promise<number | undefined> {
   const repo = new URL(brand.repoUrl).pathname.replace(/^\/|\/$/g, '');
   try {
@@ -24,8 +24,6 @@ async function repoStars(): Promise<number | undefined> {
   }
 }
 
-const compact = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
-
 export async function SiteHeader({ locale }: { locale: string }) {
   const stars = await repoStars();
   return (
@@ -37,16 +35,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
       <div className="flex items-center gap-3 sm:gap-4">
         <a href={withBasePath(`/${locale}/privacy/`)} className="hidden py-2 text-sm text-muted transition-colors hover:text-fg sm:inline">Privacy</a>
         <HeaderActions locale={locale} />
-        <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer" title="Star gitFolio on GitHub"
-           aria-label={stars === undefined ? `${brand.name} on GitHub` : `${brand.name} on GitHub: ${stars} ${stars === 1 ? 'star' : 'stars'}`}
-           className="-m-1.5 flex items-center gap-2 rounded-md p-1.5 text-sm text-muted transition-colors hover:text-accent-text focus-visible:text-accent-text">
-          <GithubIcon />
-          {stars === undefined ? null : (
-            <span className="flex items-center gap-1 font-semibold tabular-nums" aria-hidden>
-              <Star className="size-4" /> {compact(stars)}
-            </span>
-          )}
-        </a>
+        <GithubStars initial={stars} icon={<GithubIcon />} />
       </div>
     </header>
   );

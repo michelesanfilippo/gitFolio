@@ -86,6 +86,11 @@ export default function PrivacyPage({ params }: { params: Promise<{ locale: stri
         We do not use advertising or analytics cookies. Your browser&apos;s local storage keeps your draft, and, if you log in, the
         login session. These are strictly necessary for the site to work.
       </p>
+      <p>
+        The site does not contact other services while you browse. The only exception: after you click the GitHub link in the
+        header, when you come back to the page your browser asks GitHub&apos;s public API for the current number of stars, so
+        GitHub sees your IP address, as it does when you open GitHub.
+      </p>
 
       <H>How long we keep data</H>
       <p>

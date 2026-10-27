@@ -2,6 +2,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # nuova stella sul repo: si ricostruisce il sito per aggiornare il contatore nell'header (letto in fase di build)
+  watch:
+    types: [started]
   workflow_dispatch:
 permissions:
   contents: read
