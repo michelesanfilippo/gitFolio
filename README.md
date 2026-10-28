@@ -1,4 +1,6 @@
-<p align="center"><img src="public/brand/gitFolio-source.png" alt="gitFolio" width="360"></p>
+<p align="center"><img src="public/brand/gitFolio_landing.png" alt="gitFolio" width="360"></p>
+
+
 
 # gitFolio
 
@@ -10,7 +12,10 @@ Live: https://michelesanfilippo.github.io/gitFolio/
 
 
 ## Demo
-https://github.com/user-attachments/assets/252eab41-5a31-4f11-90ac-1f10ac6265a9
+
+https://github.com/user-attachments/assets/c2c939f2-51f3-4fbe-aa6f-0cd47349610f
+
+
 
 ## Development
 
