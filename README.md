@@ -12,10 +12,7 @@ Live: https://michelesanfilippo.github.io/gitFolio/
 
 
 ## How it works
-
-<p align="center"><a href="docs/gitfolio-preview.mp4"><img src="docs/gitfolio-preview.jpg" alt="Watch the gitFolio demo (34 s)" width="100%"></a></p>
-
-<p align="center"><sub>Click to play the 34 s demo.</sub></p>
+https://github.com/user-attachments/assets/89d6792b-c091-4231-978a-839c5746799c
 
 
 
