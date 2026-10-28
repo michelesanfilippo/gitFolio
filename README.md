@@ -1,4 +1,4 @@
-<p align="center"><img src="public/brand/gitFolio_landing.png" alt="gitFolio" width="360"></p>
+<p align="center"><img src="public/brand/gitFolio_landing.png" alt="gitFolio: free and open source CV builder" width="100%"></p>
 
 
 
@@ -11,9 +11,9 @@ No watermark, no paywall, no ads.
 Live: https://michelesanfilippo.github.io/gitFolio/
 
 
-## Demo
+## How it works
 
-https://github.com/user-attachments/assets/c2c939f2-51f3-4fbe-aa6f-0cd47349610f
+<p align="center"><video src="https://github.com/user-attachments/assets/c2c939f2-51f3-4fbe-aa6f-0cd47349610f" width="70%" controls muted playsinline></video></p>
 
 
 
