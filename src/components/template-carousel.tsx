@@ -117,7 +117,7 @@ export function TemplateCarousel({ locale, label, cta }: { locale: string; label
   };
 
   return (
-    <section aria-label={label} className="ring-section border-t border-border bg-bg pb-2 pt-2" onKeyDown={onKeyDown}
+    <section aria-label={label} className="ring-section bg-surface pb-2 pt-2" onKeyDown={onKeyDown}
       onFocusCapture={(e) => { if ((e.target as HTMLElement).matches(':focus-visible')) paused.current = true; }}
       onBlurCapture={() => { paused.current = false; }}>
       <div className="ring-stage" style={{ ['--n' as string]: n, ['--glide' as string]: dragging ? '0ms' : `${glide}ms`, touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}

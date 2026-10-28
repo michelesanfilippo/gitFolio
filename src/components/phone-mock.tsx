@@ -111,7 +111,7 @@ export function PhoneMock({ children }: { children?: ReactNode }) {
   };
 
   return (
-    <div ref={scene} className="phone-scene" aria-hidden onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+    <div ref={scene} className="phone-scene" aria-hidden data-ui onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
       <div className="phone-shadow" />
       <div ref={body} className="phone-sway">
         {Array.from({ length: EDGES }, (_, k) => <span key={k} className="phone-edge" style={{ ['--k' as string]: k }} />)}

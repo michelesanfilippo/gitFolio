@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
@@ -8,6 +9,18 @@ import { routing } from '@/i18n/routing';
 import { SiteHeader } from '@/components/site-header';
 import { AuthProvider } from '@/features/auth/auth-provider';
 import '../globals.css';
+
+// Carattere dell'interfaccia, servito dal sito stesso (nessuna richiesta a terzi); i file sono gli stessi usati dai template PDF.
+const ui = localFont({
+  // elenco letterale: next/font lo legge in fase di compilazione
+  src: [
+    { path: '../../../public/fonts/figtree/figtree-latin-400-normal.woff', weight: '400', style: 'normal' },
+    { path: '../../../public/fonts/figtree/figtree-latin-500-normal.woff', weight: '500', style: 'normal' },
+    { path: '../../../public/fonts/figtree/figtree-latin-600-normal.woff', weight: '600', style: 'normal' },
+    { path: '../../../public/fonts/figtree/figtree-latin-700-normal.woff', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-ui', display: 'swap', fallback: ['system-ui', 'sans-serif'],
+});
 
 export const generateStaticParams = () => routing.locales.map((locale) => ({ locale }));
 
@@ -31,7 +44,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale} className={`dark ${ui.variable}`}>
       <body>
         <NextIntlClientProvider>
           <AuthProvider>

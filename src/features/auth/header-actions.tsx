@@ -5,7 +5,7 @@ import { Button, ButtonLink } from '@/components/ui/button';
 import { withBasePath } from '@/config/brand';
 import { useAuth } from './auth-context';
 
-/** Pulsanti account nell'header. Disconnesso: Login. Connesso: Logout, Dashboard (poi il link GitHub). */
+/** Pulsanti account nell'header. Disconnesso: Login (bordato: l'unico pulsante pieno della home è la CTA). Connesso: Logout, Dashboard (poi il link GitHub). */
 export function HeaderActions({ locale }: { locale: string }) {
   const { status, openLogin, signOut } = useAuth();
   if (status === 'loading') return <span className="h-9 w-24" aria-hidden />;
@@ -21,6 +21,6 @@ export function HeaderActions({ locale }: { locale: string }) {
     );
   }
   return (
-    <Button onClick={() => openLogin('login')} icon={<LogIn />}>Login</Button>
+    <Button variant="outline" onClick={() => openLogin('login')} icon={<LogIn />}>Login</Button>
   );
 }

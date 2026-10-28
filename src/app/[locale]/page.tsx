@@ -17,26 +17,28 @@ export default function HomePage({ params }: { params: Promise<{ locale: string 
     <div className="flex min-h-[calc(100dvh-4.6rem)] flex-col">
       <div className="relative isolate flex flex-1 items-center overflow-hidden">
         <HeroWaves />
-      {/* da xl il blocco di destra si aggancia al bordo dello schermo (margine che cresce con la larghezza); il testo a sinistra
-          resta allineato alla colonna centrale di 72rem */}
+      {/* da xl i due blocchi hanno lo stesso margine esterno (quello della colonna centrale di 72rem), che cresce con la larghezza */}
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-10 px-6 py-6 xl:max-w-none [@media(max-height:700px)]:py-3">
-        <section className="flex flex-col items-start gap-4 xl:ml-[calc((100vw-72rem)/2)] [@media(max-height:700px)]:gap-2">
-          {/* entrata in sequenza (classe .rise, ritardo crescente); con "riduci movimento" tutto appare subito */}
-          <p className="rise text-sm uppercase tracking-widest text-accent-text">{t('tagline')}</p>
-          <h1 className="rise text-4xl font-bold sm:text-5xl [@media(max-height:700px)]:text-3xl" style={{ animationDelay: '80ms' }}>
+        <section className="flex flex-col items-start gap-5 xl:ml-[calc((100vw-72rem)/2)] [@media(max-height:700px)]:gap-3">
+          {/* entrata in sequenza (classe .rise, ritardo crescente); con "riduci movimento" tutto appare subito.
+              Titolo grande e stretto che cresce con lo schermo; sotto una sola frase di sostegno, nel colore pieno del testo. */}
+          <h1 className="rise text-[clamp(2.25rem,3.9vw,4.25rem)] font-bold leading-[1.02] tracking-[-0.025em] [@media(max-height:700px)]:text-3xl">
             {t('title')}
             <br />
             {t('titleLine2')}
           </h1>
-          <p className="rise max-w-xl text-lg text-muted" style={{ animationDelay: '160ms' }}>{t('subtitle')}</p>
-          <ButtonLink size="lg" href={withBasePath(`/${locale}/editor/`)} className="rise group mt-1 pr-5 text-lg" style={{ animationDelay: '240ms' }}>
+          <p className="rise max-w-xl text-lg leading-snug [@media(max-height:700px)]:text-base" style={{ animationDelay: '80ms' }}>
+            {t('tagline')}. {t('subtitle')}
+          </p>
+          <ButtonLink size="lg" href={withBasePath(`/${locale}/editor/`)} className="rise group mt-1 pl-7 pr-6 text-lg" style={{ animationDelay: '160ms' }}>
             {t('cta')}
             <ArrowRight className="size-5 transition-transform duration-200 ease-out group-hover:translate-x-1" aria-hidden />
           </ButtonLink>
         </section>
-        <div className="pop hidden items-center gap-8 lg:flex xl:mr-[max(1.5rem,calc(10vw-114px))]" style={{ animationDelay: '320ms' }}>
+        <div className="pop hidden items-center gap-8 md:flex xl:mr-[calc((100vw-72rem)/2)]" style={{ animationDelay: '240ms' }}>
           <PhoneMock />
-          <h2 className="max-w-[11ch] text-4xl font-bold sm:text-5xl [@media(max-height:700px)]:text-3xl">{t('pocket')}</h2>
+          {/* frase di accompagnamento al telefono: statement, non titolo (resta sotto i 36px); da tablet c'è posto solo per il telefono */}
+          <p className="hidden max-w-[12ch] lg:block text-[clamp(1.75rem,2.4vw,2.25rem)] font-semibold leading-[1.1] tracking-[-0.015em] [@media(max-height:700px)]:text-2xl">{t('pocket')}</p>
         </div>
       </div>
       </div>

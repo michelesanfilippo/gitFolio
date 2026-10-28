@@ -24,17 +24,17 @@
   --dur-fast: 150ms; --dur: 220ms; --dur-slow: 480ms;
   --ease-out: cubic-bezier(.22, .8, .25, 1);
   --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
-  --glow: 0 10px 28px -10px rgb(198 243 107 / .55);
 }
 
-body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
+/* Carattere dell'interfaccia: Figtree (self-hosted via next/font nel layout); dove la variabile manca resta system-ui. */
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui, system-ui), system-ui, sans-serif; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-/* Pulsanti: una sola base, varianti per ruolo. Hover: leggero sollevamento; pressione: scala 0.97; focus: anello + alone. */
+/* Pulsanti: una sola base (a pillola, piatti), varianti per ruolo. Hover: leggero sollevamento e tono più chiaro; pressione: scala 0.97; focus: anello + alone. */
 .btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
-  border-radius: .5rem; font-weight: 600; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  border-radius: 999px; font-weight: 600; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out),
     border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
 }
@@ -42,10 +42,10 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .btn:active:not(:disabled) { transform: scale(.97); transition-duration: 60ms; }
 .btn:disabled { cursor: not-allowed; opacity: .5; }
 .btn:focus-visible { outline-offset: 3px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent); }
-.btn-primary { background: var(--accent); color: var(--accent-fg); box-shadow: 0 1px 0 rgb(255 255 255 / .25) inset; }
-.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, white); box-shadow: 0 1px 0 rgb(255 255 255 / .35) inset, var(--glow); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); }
+.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 86%, white); }
 .btn-outline { border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent-text); background: transparent; }
-.btn-outline:hover:not(:disabled) { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); box-shadow: var(--glow); }
+.btn-outline:hover:not(:disabled) { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .btn-secondary { border: 1px solid var(--border); color: var(--fg); background: transparent; }
 .btn-secondary:hover:not(:disabled) { border-color: color-mix(in srgb, var(--fg-muted) 60%, var(--border)); background: color-mix(in srgb, var(--border) 55%, transparent); }
 .btn-ghost { color: var(--fg-muted); background: transparent; }
@@ -143,7 +143,7 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
 .ring-label, .ring-cta { position: absolute; top: 0; left: 0; width: var(--card-w); transform: rotateY(var(--a)) translateZ(calc(var(--ring-r) + 1px)); backface-visibility: hidden; }
 .ring-label {
   margin-top: calc(var(--card-h) + 12px); text-align: center; white-space: nowrap;
-  font-size: 12px; font-weight: 500; letter-spacing: .01em; color: var(--fg-muted);
+  font-size: 13px; font-weight: 500; letter-spacing: .01em; color: var(--fg-muted);
   opacity: var(--lit); transition: color .25s, opacity var(--glide) ease-out; pointer-events: auto;
 }
 /* pulsante sulla card davanti: rende evidente che il clic apre l'editor con quel template */
@@ -152,8 +152,8 @@ body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-ser
   opacity: 0; transition: opacity .3s;
 }
 .ring-cta > span {
-  padding: 3px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
-  background: var(--accent); color: var(--accent-fg); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
+  padding: 3px 9px; border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
+  background: var(--accent); color: var(--accent-fg);
 }
 .ring-card[aria-current] .ring-label { color: var(--fg); font-weight: 600; }
 /* il pulsante compare al passaggio del mouse / col focus; sui dispositivi touch (niente hover) è sempre visibile sulla card davanti */

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>gitFolio — launch film</title>
+<!--
+  Video di lancio di gitFolio, 1920x1080, disegnato interamente in codice: ogni fotogramma è una funzione del tempo
+  (window.seek(secondi)), così lo script di render lo fotografa a 60 fps senza dipendere dall'orologio del browser.
+  Aperto normalmente va in loop; con ?render nell'URL aspetta le chiamate a seek(). Asset: logo e schermate reali del sito
+  (video/assets, prodotte da scripts/video-screens.mjs), font Figtree come il sito. Colori del brand: #171918, #C6F36B, #F2F2EE.
+-->
+<style>
+  @font-face { font-family: Figtree; font-weight: 400; src: url(assets/fonts/figtree-latin-400-normal.woff) format('woff'); }
+  @font-face { font-family: Figtree; font-weight: 500; src: url(assets/fonts/figtree-latin-500-normal.woff) format('woff'); }
+  @font-face { font-family: Figtree; font-weight: 600; src: url(assets/fonts/figtree-latin-600-normal.woff) format('woff'); }
+  @font-face { font-family: Figtree; font-weight: 700; src: url(assets/fonts/figtree-latin-700-normal.woff) format('woff'); }
+  :root { --bg: #171918; --surface: #1e2120; --ink: #f2f2ee; --muted: #a3a9a4; --lime: #c6f36b; }
+  html, body { margin: 0; background: #000; }
+  body { font-family: Figtree, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  .layer { position: absolute; inset: 0; opacity: 0; will-change: transform, opacity; }
+  .abs { position: absolute; will-change: transform, opacity; }
+  /* onde del brand, molto tenui, in lento movimento: l'unica cosa "viva" nei momenti di solo testo */
+  .waves { position: absolute; left: -1920px; top: 0; width: 3840px; height: 1080px; }
+  .h1 { font-weight: 700; letter-spacing: -.03em; line-height: .98; margin: 0; }
+  .cap { font-weight: 600; font-size: 60px; letter-spacing: -.02em; line-height: 1.1; }
+  .lime { color: var(--lime); }
+  /* schermata reale del prodotto: 1920x1080 in scala, angoli morbidi, ombra solo perché fluttua */
+  .screen { position: absolute; width: 1920px; height: 1080px; border-radius: 22px; overflow: hidden; background: var(--surface);
+    box-shadow: 0 60px 160px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07); transform-origin: 50% 50%; }
+  .screen img { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+  .cursor { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px rgba(23,25,24,.9); }
+  .ring { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 3px solid var(--lime); }
+  .hl { position: absolute; border-radius: 999px; border: 3px solid var(--lime); }
+  .tpl { position: absolute; top: 0; left: 0; height: 100%; display: flex; gap: 44px; }
+  .tpl img { height: 100%; width: auto; border-radius: 10px; display: block; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+  .btn { display: inline-flex; align-items: center; gap: 18px; padding: 0 54px; height: 108px; border-radius: 999px; background: var(--lime); color: var(--bg);
+    font-weight: 600; font-size: 44px; letter-spacing: -.01em; }
+  .url { font-size: 36px; color: var(--muted); font-weight: 500; letter-spacing: .005em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg class="waves" id="waves" viewBox="0 0 3200 1080" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+  <!-- 1 · logo -->
+  <div class="layer" id="L-logo">
+    <img class="abs" id="logo" src="assets/logo-full.png" alt="" style="left:620px; top:446px; width:680px;">
+  </div>
+
+  <!-- 2 · "Your CV." -->
+  <div class="layer" id="L-cv">
+    <h1 class="h1 abs" id="cv" style="left:0; right:0; top:420px; text-align:center; font-size:220px;">Your CV.</h1>
+  </div>
+
+  <!-- 3 · "Free with no limits." + landing -->
+  <div class="layer" id="L-free">
+    <h1 class="h1 abs" id="free" style="left:0; right:0; top:120px; text-align:center; font-size:124px;">Free with <span class="lime">no limits.</span></h1>
+    <div class="screen" id="landing" style="left:0; top:0;"><img src="assets/screens/landing.png" alt=""></div>
+  </div>
+
+  <!-- 4 · editor: Upload CV -->
+  <div class="layer" id="L-editor">
+    <div class="screen" id="editor" style="left:0; top:0;">
+      <img id="editor-before" src="assets/screens/editor-content.png" alt="">
+      <img id="editor-after" src="assets/screens/editor-upload.png" alt="" style="opacity:0">
+      <div class="hl" id="hl" style="left:1402px; top:78px; width:138px; height:52px; opacity:0"></div>
+      <div class="ring" id="ring" style="left:1472px; top:104px; opacity:0"></div>
+      <div class="cursor" id="cursor" style="left:1472px; top:104px; opacity:0"></div>
+    </div>
+    <div class="cap abs" id="cap-editor" style="left:0; right:0; top:950px; text-align:center;">Start from the CV you <span class="lime">already have.</span></div>
+  </div>
+
+  <!-- 5 · YAML -->
+  <div class="layer" id="L-yaml">
+    <div class="screen" id="yaml" style="left:0; top:0;"><img src="assets/screens/editor-yaml.png" alt=""></div>
+    <div class="cap abs" id="cap-yaml" style="left:120px; top:44px;">Or write it <span class="lime">as YAML.</span></div>
+  </div>
+
+  <!-- 6 · templates -->
+  <div class="layer" id="L-tpl">
+    <div class="cap abs" id="cap-tpl" style="left:120px; top:110px; font-size:76px;"><span class="lime">12 templates.</span> Free with no limits.</div>
+    <div class="abs" style="left:0; top:300px; width:1920px; height:640px; overflow:visible;">
+      <div class="tpl" id="tpl"></div>
+    </div>
+  </div>
+
+  <!-- 7 · PDF -->
+  <div class="layer" id="L-pdf">
+    <div class="screen" id="pdf" style="left:0; top:0;"><img src="assets/screens/editor-preview.png" alt=""></div>
+    <div class="cap abs" id="cap-pdf" style="left:120px; top:440px; font-size:84px; line-height:1.05;">No watermark,<br><span class="lime">no paywall.</span></div>
+  </div>
+
+  <!-- 8 · chiusura -->
+  <div class="layer" id="L-end">
+    <img class="abs" id="logo2" src="assets/logo-full.png" alt="" style="left:660px; top:306px; width:600px;">
+    <div class="abs" id="btn" style="left:0; right:0; top:560px; text-align:center;"><span class="btn">Let's start <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+    <div class="abs url" id="url" style="left:0; right:0; top:730px; text-align:center;">michelesanfilippo.github.io/gitFolio</div>
+  </div>
+
+  <div class="layer" id="fade" style="background:#000; opacity:0"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+const outExpo = (p) => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
+const inOutSine = (p) => -(Math.cos(Math.PI * p) - 1) / 2;
+const inOutCubic = (p) => (p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const outBack = (p, s = 1.25) => 1 + (s + 1) * Math.pow(p - 1, 3) + s * Math.pow(p - 1, 2); // piccolo assestamento
+const seg = (t, a, b) => clamp01((t - a) / (b - a));
+
+const DUR = 34;
+window.__duration = DUR;
+const BEATS = { logo: [0, 3.0], cv: [3.0, 6.0], free: [6.0, 10.5], editor: [10.5, 16.0], yaml: [16.0, 20.5], tpl: [20.5, 25.5], pdf: [25.5, 29.5], end: [29.5, DUR] };
+
+// un livello (beat): dissolvenza in entrata e in uscita, leggera scala in uscita
+const layer = (name, t, inD = .45, outD = .45) => {
+  const [a, b] = BEATS[name];
+  const el = $('L-' + name);
+  if (t < a - .001 || t > b + .001) { el.style.opacity = 0; el.style.transform = ''; return null; }
+  const i = seg(t, a, a + inD), o = seg(t, b - outD, b);
+  el.style.opacity = Math.min(outExpo(i), 1 - inOutSine(o));
+  el.style.transform = `scale(${lerp(1, 1.025, inOutSine(o))})`;
+  return { a, b, p: seg(t, a, b), local: t - a };
+};
+const set = (el, { o, x = 0, y = 0, s = 1 }) => { el.style.opacity = o; el.style.transform = `translate(${x}px, ${y}px) scale(${s})`; };
+// entrata standard di un testo: sale e appare, con un assestamento minimo
+const rise = (el, t, from, dur = .7, dy = 36) => {
+  const i = seg(t, from, from + dur);
+  set(el, { o: outExpo(i), y: lerp(dy, 0, outBack(i, .6)) });
+};
+// una schermata reale che "fluttua": entra salendo, poi avanza piano lungo tutto il beat
+const screen = (el, t, { from, dur = .9, x, y, s0, s1, p, dy = 90, originX = '50%', originY = '50%' }) => {
+  const i = seg(t, from, from + dur);
+  el.style.transformOrigin = `${originX} ${originY}`;
+  el.style.opacity = outExpo(i);
+  const s = lerp(s0, s1, inOutSine(p));
+  el.style.transform = `translate(${x}px, ${y + lerp(dy, 0, outExpo(i))}px) scale(${s})`;
+};
+
+// onde: tre linee lime, periodiche sulla larghezza, che scorrono lentamente
+(function waves() {
+  const W = 3200, defs = [[260, 26, 2, .07], [540, 34, 2, .05], [820, 24, 3, .07]];
+  let html = '';
+  for (const [y, amp, cycles, op] of defs) {
+    let d = ''; const n = 160;
+    for (let k = 0; k <= n; k++) { const x = (k / n) * W; const yy = y + amp * Math.sin((x / W) * cycles * Math.PI * 2 + y); d += (k ? ' L' : 'M') + x.toFixed(1) + ' ' + yy.toFixed(1); }
+    html += `<path d="${d}" fill="none" stroke="#C6F36B" stroke-opacity="${op}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  }
+  $('waves').innerHTML = html;
+})();
+
+// template reali (le immagini dei 12 preset del sito), in fila
+const TPL = ['lime-classic', 'midnight', 'editorial', 'corporate', 'minimal', 'creative', 'sage-studio', 'executive', 'tech', 'rose', 'bold', 'contrast'];
+$('tpl').innerHTML = TPL.map((id) => `<img src="assets/templates/${id}.webp" alt="">`).join('');
+
+function render(t) {
+  t = Math.max(0, Math.min(DUR, t));
+  // onde: scorrono di meno di un periodo (1920 px di margine a sinistra) lungo tutto il video
+  $('waves').style.transform = `translateX(${(t / DUR) * 1900}px)`;
+  const wavesOn = t < BEATS.free[0] || t >= BEATS.end[0] || (t >= BEATS.tpl[0] && t < BEATS.tpl[1]);
+  $('waves').style.opacity = wavesOn ? 1 : .35;
+
+  // 1 · logo: appare con un piccolo assestamento, poi lascia il posto
+  let L = layer('logo', t, .01, .5);
+  if (L) { const i = seg(t, .25, 1.4); set($('logo'), { o: outExpo(i), y: lerp(22, 0, outExpo(i)), s: lerp(.94, 1, outBack(i, .9)) }); }
+
+  // 2 · Your CV.
+  L = layer('cv', t, .01, .5);
+  if (L) rise($('cv'), t, L.a + .05, .8, 48);
+
+  // 3 · Free with no limits. + la home vera che sale dal basso e avanza piano
+  L = layer('free', t, .01, .5);
+  if (L) {
+    rise($('free'), t, L.a + .05, .8, 44);
+    screen($('landing'), t, { from: L.a + .35, dur: 1.1, x: 0, y: 330, s0: .78, s1: .83, p: L.p, dy: 140, originY: '0%' });
+  }
+
+  // 4 · editor: il cursore va su "Upload CV", clic, e il CV reale compare al posto del segnaposto
+  L = layer('editor', t, .45, .5);
+  if (L) {
+    const T = L.a;
+    screen($('editor'), t, { from: T, dur: 1.0, x: 0, y: 36, s0: .78, s1: .81, p: L.p, dy: 80, originY: '0%' });
+    const m = seg(t, T + 1.3, T + 2.2), e = outExpo(m);
+    const click = seg(t, T + 2.4, T + 2.75);
+    const away = outExpo(seg(t, T + 2.9, T + 3.7));
+    const cx = lerp(1690, 1472, e) + lerp(0, 60, away), cy = lerp(520, 104, e) + lerp(0, 90, away);
+    set($('cursor'), { o: m > 0 ? 1 - away : 0, x: cx - 1472, y: cy - 104, s: click > 0 && click < 1 ? lerp(1, .78, Math.sin(click * Math.PI)) : 1 });
+    set($('ring'), { o: click > 0 ? (1 - click) * .9 : 0, s: lerp(1, 3.2, outExpo(click)) });
+    const hl = seg(t, T + 2.05, T + 2.5);
+    $('hl').style.opacity = Math.min(outExpo(hl), 1 - seg(t, T + 3.2, T + 3.7));
+    $('hl').style.transform = `scale(${lerp(1.25, 1, outExpo(hl))})`;
+    // dopo il clic la schermata vera "dopo l'upload" sostituisce quella con i segnaposto
+    $('editor-after').style.opacity = outExpo(seg(t, T + 2.65, T + 3.15));
+    rise($('cap-editor'), t, T + 3.0, .8, 40);
+  }
+
+  // 5 · YAML: la schermata entra intera, poi la camera si avvicina al pannello di testo (a sinistra)
+  L = layer('yaml', t, .45, .5);
+  if (L) {
+    const T = L.a;
+    // ancorata al margine sinistro, in alto: il pannello YAML resta intero e la schermata esce dal bordo in basso a destra
+    screen($('yaml'), t, { from: T + .25, dur: 1.0, x: 120, y: 150, s0: 1, s1: 1.07, p: L.p, dy: 70, originX: '0%', originY: '0%' });
+    rise($('cap-yaml'), t, T + .05, .8, 36);
+  }
+
+  // 6 · template: la fila dei 12 preset veri scorre
+  L = layer('tpl', t, .45, .5);
+  if (L) {
+    const T = L.a;
+    rise($('cap-tpl'), t, T + .1, .8, 40);
+    const x = lerp(1920, -3400, inOutSine(seg(t, T, L.b)));
+    set($('tpl'), { o: 1, x, y: lerp(40, 0, outExpo(seg(t, T, T + 1))) });
+  }
+
+  // 7 · PDF: l'anteprima ingrandita, a destra, avanza piano; la frase a sinistra
+  L = layer('pdf', t, .45, .5);
+  if (L) {
+    const T = L.a;
+    screen($('pdf'), t, { from: T, dur: 1.0, x: 560, y: 110, s0: .78, s1: .84, p: L.p, dy: 90, originX: '60%', originY: '50%' });
+    rise($('cap-pdf'), t, T + .5, .9, 48);
+  }
+
+  // 8 · chiusura: logo, pulsante con le parole esatte del sito, indirizzo
+  L = layer('end', t, .01, .01);
+  if (L) {
+    const T = L.a;
+    const i = seg(t, T + .1, T + 1.1);
+    set($('logo2'), { o: outExpo(i), y: lerp(24, 0, outExpo(i)), s: lerp(.96, 1, outBack(i, .8)) });
+    const j = seg(t, T + .8, T + 1.6);
+    set($('btn'), { o: outExpo(j), y: lerp(30, 0, outBack(j, 1.1)) });
+    rise($('url'), t, T + 1.4, .8, 20);
+  }
+  // nero in apertura e in chiusura, così il loop riparte pulito
+  $('fade').style.opacity = Math.max(seg(t, DUR - .5, DUR), 1 - seg(t, 0, .25));
+}
+
+window.seek = (t) => { render(t); return t; };
+
+const ready = Promise.all([document.fonts.ready, ...Array.from(document.images).map((im) => (im.complete ? Promise.resolve() : new Promise((r) => { im.onload = r; im.onerror = r; })).then(() => im.decode().catch(() => {})))]);
+ready.then(() => {
+  render(0);
+  window.__ready = true;
+  if (!location.search.includes('render')) {
+    const t0 = performance.now();
+    const loop = (now) => { render(((now - t0) / 1000) % DUR); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+});
+</script>
+</body>
+</html>
