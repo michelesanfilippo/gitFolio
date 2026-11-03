@@ -113,7 +113,7 @@ await p.getByRole('tab', { name: 'Layout' }).click();
 await p.getByRole('button', { name: 'Two', exact: true }).click(); await settle();
 await p.getByRole('tab', { name: 'Content' }).click();
 await open('Add a new section');
-await vis(p.getByLabel('Section title')).last().fill('Volunteering');
+await vis(p.getByLabel('Section title', { exact: true })).last().fill('Volunteering');
 await p.getByRole('textbox', { name: 'New section text' }).click();
 await p.keyboard.type('Helped people learn');
 await p.getByRole('group', { name: 'Where' }).getByRole('button', { name: 'Side column' }).click();

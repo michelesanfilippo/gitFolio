@@ -1,9 +1,10 @@
+import { isValidIsoDate } from '@/core/content/contacts';
 import type { Block, RichText } from '@/core/richtext/ast';
 import {
   newId, CUSTOM_PREFIX, type CertItem, type ContactItem, type CvDocument, type EducationItem, type ExperienceItem, type LanguageItem,
   type Locale, type ProjectItem, type SkillGroup,
 } from '@/core/schema/cv';
-import { findRange, findSingleDate } from './dates';
+import { findRange, findSingleDate, parseFullDate } from './dates';
 
 // CV esistente (testo estratto da PDF, DOCX o file di testo) → contenuti di gitFolio. Lettura euristica, pensata per i CV
 // più comuni: titoli di sezione riconosciuti in en/it/fr/de/es, voci separate dalle date, contatti trovati con espressioni
@@ -36,6 +37,11 @@ const PHONE = /(?:(?:\+|00)\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{2,4}[\s.-]
 const LINKEDIN = /(?:https?:\/\/)?(?:[\w.]+\.)?linkedin\.com\/in\/[\w%.-]+\/?/i;
 const GITHUB = /(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/?/i;
 const URL_RE = /(?:https?:\/\/|www\.)[^\s|,;)]+|\b[\w-]+\.(?:com|io|dev|it|org|net|me|eu|co\.uk|fr|de|es|app|tech)\b(?:\/[^\s|,;)]*)?/i;
+// data di nascita solo se preceduta dall'etichetta ("Date of birth: 12/03/1990", "Nato il 12 marzo 1990"): senza etichetta una data non è riconoscibile
+const DOB_LABEL = /(?:date of birth|birth ?date|d\.?o\.?b\.?|born(?: on)?|nat[oa](?:\/a)?(?: il)?|data di nascita|date de naissance|n[ée]e?(?: le)?|geburtsdatum|geboren(?: am)?|fecha de nacimiento|nacid[oa](?: el)?)/u;
+const DOB_DATE = /(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}(?:st|nd|rd|th|º|°)?\s+(?:de\s+)?\p{L}{3,}\.?,?\s+(?:de\s+)?\d{4}|\p{L}{3,}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/u;
+const DOB = new RegExp(`\\b${DOB_LABEL.source}\\b\\s*[:.\\-–]?\\s*${DOB_DATE.source}`, 'iu');
+const FULL_DATE_NUM = /\b\d{1,2}[./-]\d{1,2}[./-]\d{4}\b/g;
 const CONTACT_LABEL = /^(e-?mail|mail|tel(efono|\.)?|phone|mobile|cell(ulare)?|address|indirizzo|location|città|web|site|sito|linkedin|github|portfolio|website)\s*[:.]?\s*/i;
 const BULLET = /^\s*(?:[-•*·▪◦‣–—]|\d+[.)])\s+/;
 const COMPANY_HINT = /\b(inc|ltd|llc|gmbh|ag|s\.?p\.?a|s\.?r\.?l|s\.?a\.?s|srl|spa|sas|sa|plc|corp|co|group|bank|banca|studio|agency|consulting|technologies|solutions|software|labs?|university|università|universidad|université|universität|politecnico|institute|istituto|school|college|liceo|academy)\b\.?/i;
@@ -90,14 +96,20 @@ function contacts(lines: TextLine[]): { items: ContactItem[]; used: Set<number> 
     items.push({ id: newId(), kind, value: v, visible: true });
   };
   lines.forEach((l, i) => {
-    const t = clean(l.text);
+    let t = clean(l.text);
     let hit = false;
+    const dob = DOB.exec(t);
+    if (dob) {
+      const iso = parseFullDate(dob[1]!);
+      if (iso && isValidIsoDate(iso)) { add('birthdate', iso); hit = true; }
+      t = clean(t.replace(dob[0], ' ')); // la data non deve finire nel telefono né altrove
+    }
     const e = EMAIL.exec(t); if (e) { add('email', e[0]); hit = true; }
     const li = LINKEDIN.exec(t); if (li) { add('linkedin', li[0].replace(/^https?:\/\//i, '').replace(/^www\./i, '')); hit = true; }
     const gh = GITHUB.exec(t); if (gh) { add('github', gh[0].replace(/^https?:\/\//i, '').replace(/^www\./i, '')); hit = true; }
     const noLinks = t.replace(LINKEDIN, '').replace(GITHUB, '').replace(EMAIL, '');
     const u = URL_RE.exec(noLinks); if (u && !/^\d/.test(u[0])) { add('website', u[0]); hit = true; }
-    const rest = noLinks.replace(URL_RE, '');
+    const rest = noLinks.replace(URL_RE, '').replace(FULL_DATE_NUM, ' ');
     const ph = PHONE.exec(rest);
     if (ph && ph[0].replace(/\D/g, '').length >= 8 && ph[0].replace(/\D/g, '').length <= 15 && !/\d{4}\s*[-–]\s*\d{4}/.test(ph[0])) { add('phone', ph[0].trim()); hit = true; }
     if (hit) {

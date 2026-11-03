@@ -3,7 +3,7 @@
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useState, type HTMLAttributes, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CONTACT_ICONS } from '@/core/icons/contact-icons';
+import { contactIconPrims, type IconPrim } from '@/core/icons/contact-icons';
 import type { ContactKind } from '@/core/schema/cv';
 
 export const inputCls = 'field';
@@ -80,14 +80,20 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
 
 /* ----------------------------------------------------------------- icone */
 
-export function ContactGlyph({ kind, className = 'size-4' }: { kind: ContactKind; className?: string }) {
+/** Disegna le primitive di un'icona (le stesse del PDF). */
+export function IconGlyph({ prims, className = 'size-4' }: { prims: IconPrim[]; className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {CONTACT_ICONS[kind].map((pr, i) =>
+      {prims.map((pr, i) =>
         pr.t === 'path' ? <path key={i} d={pr.d} /> : pr.t === 'circle' ? <circle key={i} cx={pr.cx} cy={pr.cy} r={pr.r} /> : <rect key={i} x={pr.x} y={pr.y} width={pr.w} height={pr.h} rx={pr.rx} />,
       )}
     </svg>
   );
+}
+
+/** Icona effettiva di un contatto (quella scelta, o la predefinita del tipo). */
+export function ContactGlyph({ kind, icon, className }: { kind: ContactKind; icon?: string; className?: string }) {
+  return <IconGlyph prims={contactIconPrims(kind, icon)} className={className} />;
 }
 
 /* ----------------------------------------------------------- contenitori */

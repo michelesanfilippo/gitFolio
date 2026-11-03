@@ -323,7 +323,7 @@ export function DesignLab() {
           {/* su telefono lo slider si restringe e i pulsanti vanno a capo: niente scroll orizzontale */}
           <div className="flex w-full min-w-0 items-center gap-3 text-sm text-muted sm:w-auto">
             <Search className="size-6 text-accent" aria-hidden />
-            <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 min-w-0 flex-1 accent-[var(--accent)] sm:w-52 sm:flex-none" />
+            <input type="range" aria-label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} value={zoom} onChange={(e) => setZoom(clampZoom(Number(e.target.value)))} className="h-6 min-w-0 flex-1 accent-[var(--accent)] sm:w-32 sm:flex-none 2xl:w-52" />
             <output aria-live="off" className="w-12 shrink-0 text-base font-medium tabular-nums text-fg">{Math.round(zoom * 100)}%</output>
             <span className="flex shrink-0 gap-1.5">
               <Button variant="outline" size="icon" aria-label="Zoom out" data-tip="Zoom out" data-tip-side="bottom" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}><Minus /></Button>

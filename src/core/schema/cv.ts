@@ -4,13 +4,15 @@ import type { RichText } from '../richtext/ast';
 export type Id = string;
 export type Locale = 'en' | 'it' | 'fr' | 'de' | 'es';
 
-export type ContactKind = 'email' | 'phone' | 'location' | 'website' | 'linkedin' | 'github' | 'link';
+export type ContactKind = 'email' | 'phone' | 'location' | 'birthdate' | 'website' | 'linkedin' | 'github' | 'link';
 export interface ContactItem {
   id: Id;
   kind: ContactKind;
-  /** Testo mostrato / indirizzo (email, telefono, città, URL). */
+  /** Testo mostrato / indirizzo (email, telefono, città, URL); per `birthdate` una data "YYYY-MM-DD". */
   value: string;
   visible: boolean;
+  /** Id dell'icona scelta tra quelle del tipo (vedi `CONTACT_ICON_CHOICES`), o "none". Assente = icona predefinita del tipo. */
+  icon?: string;
 }
 
 export interface DateRange { start?: string; end?: string; current?: boolean } // "YYYY-MM"

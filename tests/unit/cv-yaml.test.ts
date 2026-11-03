@@ -42,3 +42,29 @@ describe('CV ↔ YAML', () => {
     expect(fromYaml('', sampleCv()).ok).toBe(false);
   });
 });
+
+describe('birth date and icons in YAML', () => {
+  it('round-trips a date of birth and a chosen icon', () => {
+    const base = sampleCv('en');
+    const doc = { ...base, personal: { ...base.personal, contacts: [
+      { id: 'c1', kind: 'birthdate' as const, value: '1990-03-12', visible: true, icon: 'gift' },
+      { id: 'c2', kind: 'email' as const, value: 'ada@example.com', visible: true, icon: 'at-sign' },
+      { id: 'c3', kind: 'phone' as const, value: '+39 333 123 4567', visible: false },
+    ] } };
+    const yaml = toYaml(doc);
+    expect(yaml).toContain('birthdate: 1990-03-12');
+    expect(yaml).toContain('icon: gift');
+    const back = fromYaml(yaml, doc);
+    expect(back.ok).toBe(true);
+    if (!back.ok) return;
+    expect(back.doc.personal.contacts).toEqual(doc.personal.contacts);
+  });
+
+  it('drops an icon that does not belong to the kind, and a malformed date', () => {
+    const r = fromYaml(['name: Ada', 'contacts:', '  - email: ada@example.com', '    icon: cake', '  - birthdate: 31/02/1990'].join('\n'), sampleCv());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.personal.contacts[0]!.icon).toBeUndefined();
+    expect(r.doc.personal.contacts[1]).toMatchObject({ kind: 'birthdate', value: '' });
+  });
+});

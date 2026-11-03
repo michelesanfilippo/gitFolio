@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { Block, Inline, RichText } from '@/core/richtext/ast';
 import { contactHref, contactText, visibleContacts } from '@/core/content/contacts';
 import { effectiveOrder, sectionTitle } from '@/core/content/order';
-import { CONTACT_ICONS } from '@/core/icons/contact-icons';
+import { contactIconPrims } from '@/core/icons/contact-icons';
 import type { ContactItem, CvDocument, DateRange } from '@/core/schema/cv';
 import type { DesignSettings } from '@/core/schema/design';
 import { generatePattern, patternRegion, resolvePatternColor } from '@/core/pattern/patterns';
@@ -241,7 +241,7 @@ function LanguagesBlock({ ctx }: { ctx: Ctx }) {
   );
 }
 
-function ContactIcon({ kind, ctx, bg }: { kind: ContactItem['kind']; ctx: Ctx; bg: string }) {
+function ContactIcon({ prims, ctx, bg }: { prims: ReturnType<typeof contactIconPrims>; ctx: Ctx; bg: string }) {
   const { iconColor, iconSize } = ctx.d.contacts;
   const color =
     iconColor === 'black' ? '#000000' : iconColor === 'white' ? '#FFFFFF' : iconColor === 'primary' ? ctx.d.colors.primary
@@ -249,7 +249,7 @@ function ContactIcon({ kind, ctx, bg }: { kind: ContactItem['kind']; ctx: Ctx; b
   const stroke = { stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg viewBox="0 0 24 24" style={{ width: iconSize, height: iconSize }}>
-      {CONTACT_ICONS[kind].map((pr, i) =>
+      {prims.map((pr, i) =>
         pr.t === 'path' ? <Path key={i} d={pr.d} {...stroke} />
         : pr.t === 'circle' ? <Circle key={i} cx={pr.cx} cy={pr.cy} r={pr.r} {...stroke} />
         : <Rect key={i} x={pr.x} y={pr.y} width={pr.w} height={pr.h} rx={pr.rx} {...stroke} />,
@@ -269,10 +269,13 @@ function ContactLines({ ctx, stacked, bg }: { ctx: Ctx; stacked: boolean; bg: st
     <View style={stacked ? undefined : { flexDirection: 'row', flexWrap: 'wrap', justifyContent: justify, width: '100%' }}>
       {items.map((c) => {
         const href = contactHref(c);
+        const prims = icons ? contactIconPrims(c.kind, c.icon) : [];
+        // senza icona una data da sola non si capirebbe: la data di nascita porta davanti "Nato il", "Born"...
+        const label = (c.kind === 'birthdate' && !prims.length ? `${labels[ctx.doc.locale].born} ` : '') + contactText(c, ctx.doc.locale);
         return (
           <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: stacked ? 3 : 2, ...(stacked ? {} : { marginRight: 14 }) }}>
-            {icons ? <View style={{ marginRight: 5 }}><ContactIcon kind={c.kind} ctx={ctx} bg={bg} /></View> : null}
-            {href ? <Link src={href} style={text}>{contactText(c)}</Link> : <Text style={text}>{contactText(c)}</Text>}
+            {prims.length ? <View style={{ marginRight: 5 }}><ContactIcon prims={prims} ctx={ctx} bg={bg} /></View> : null}
+            {href ? <Link src={href} style={text}>{label}</Link> : <Text style={text}>{label}</Text>}
           </View>
         );
       })}

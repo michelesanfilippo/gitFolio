@@ -31,8 +31,12 @@ const bad = await p.evaluate(() => {
   return out;
 });
 ok(bad.length === 0, `no field overflows the sidebar ${bad.length ? bad.slice(0, 5).join(' | ') : ''}`);
-const sel = await p.locator('select[aria-label="Contact type"]').first().evaluate((e) => ({ pad: getComputedStyle(e).paddingLeft, w: e.getBoundingClientRect().width }));
-ok(parseFloat(sel.pad) >= 30, `contact type select has room for the icon (padding-left ${sel.pad}, width ${Math.round(sel.w)})`);
+// l'icona del contatto è un pulsante accanto al menu del tipo: non si sovrappongono e stanno nella stessa riga
+const geo = await p.locator('select[aria-label="Contact type"]').first().evaluate((e) => {
+  const s = e.getBoundingClientRect(), btn = e.parentElement.querySelector('button[aria-label^="Change icon"]').getBoundingClientRect();
+  return { gap: s.left - btn.right, dy: Math.abs((s.top + s.height / 2) - (btn.top + btn.height / 2)), w: s.width };
+});
+ok(geo.gap >= 0 && geo.dy < 4, `contact icon button sits next to the type menu without overlapping (gap ${Math.round(geo.gap)}px, width ${Math.round(geo.w)})`);
 ok((await p.getByRole('button', { name: 'Expand all sections' }).evaluate((e) => e.className.includes('text-accent-text'))), 'expand/collapse buttons are lime');
 
 // contacts: niente frecce, altre sezioni sì

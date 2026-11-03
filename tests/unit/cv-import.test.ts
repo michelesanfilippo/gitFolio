@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { findRange, parseMonth } from '@/importers/dates';
+import { findRange, parseFullDate, parseMonth } from '@/importers/dates';
 import { docxXmlToLines } from '@/importers/docx';
 import { parseCvText, textToLines } from '@/importers/text-cv';
 import { sampleCv } from '@/core/schema/sample';
@@ -85,5 +85,33 @@ describe('docx paragraphs', () => {
       { text: 'line one', bold: false, size: undefined, bullet: undefined },
       { text: 'line two', bold: false, size: undefined, bullet: undefined },
     ]);
+  });
+});
+
+describe('date of birth in an imported CV', () => {
+  const parse = (lines: string[]) => parseCvText(textToLines(lines.join('\n')), sampleCv('en')).doc.personal.contacts;
+  const born = (c: ReturnType<typeof parse>) => c.find((x) => x.kind === 'birthdate')?.value;
+
+  it('reads labelled dates in several languages and formats', () => {
+    expect(born(parse(['Jane Example', 'Date of birth: 12/03/1990', 'jane@example.com']))).toBe('1990-03-12');
+    expect(born(parse(['Mario Rossi', 'Nato il 5 marzo 1985', 'mario@example.com']))).toBe('1985-03-05');
+    expect(born(parse(['Anna Müller', 'Geburtsdatum: 12.03.1990', 'anna@example.com']))).toBe('1990-03-12');
+    expect(born(parse(['Jane Example', 'Born March 12, 1990', 'jane@example.com']))).toBe('1990-03-12');
+    expect(born(parse(['Jane Example', 'DOB 1990-03-12', 'jane@example.com']))).toBe('1990-03-12');
+  });
+
+  it('does not turn the date into a phone number, nor an unlabelled date into a birth date', () => {
+    const c = parse(['Jane Example', 'Date of birth: 12.03.1990 | jane@example.com']);
+    expect(c.some((x) => x.kind === 'phone')).toBe(false);
+    expect(c.find((x) => x.kind === 'email')?.value).toBe('jane@example.com');
+    expect(born(parse(['Jane Example', '12.03.1990', 'jane@example.com']))).toBeUndefined();
+    expect(parse(['Jane Example', '12.03.1990', 'jane@example.com']).some((x) => x.kind === 'phone')).toBe(false);
+  });
+
+  it('parses full dates', () => {
+    expect(parseFullDate('03/25/1990')).toBe('1990-03-25'); // il giorno non può essere 25: il mese va davanti
+    expect(parseFullDate('31/02/1990')).toBeUndefined();
+    expect(parseFullDate('12 de marzo de 1990')).toBe('1990-03-12');
+    expect(parseFullDate('Dec 5th, 1999')).toBe('1999-12-05');
   });
 });

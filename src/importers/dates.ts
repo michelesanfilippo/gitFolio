@@ -71,3 +71,29 @@ export function findSingleDate(line: string): { month: string; rest: string } | 
   const rest = line.slice(0, m.index).replace(/\s*[|·•,;(–—-]+\s*$/u, '').trim();
   return { month, rest };
 }
+
+const isoDay = (y: number, m: number, d: number): string | undefined => {
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? `${y}-${pad(m)}-${pad(d)}` : undefined;
+};
+
+/** Data completa → "YYYY-MM-DD": "1990-03-12", "12/03/1990", "12.03.1990", "12 March 1990", "March 12, 1990".
+ * Con le cifre il giorno viene prima del mese, salvo che sia evidente il contrario (es. "03/25/1990"). */
+export function parseFullDate(v: string): string | undefined {
+  const s = v.trim().toLowerCase().replace(/[.,]+$/, '');
+  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(s);
+  if (m) return isoDay(Number(m[1]), Number(m[2]), Number(m[3]));
+  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(s);
+  if (m) {
+    let [d, mo] = [Number(m[1]), Number(m[2])];
+    if (mo > 12 && d <= 12) [d, mo] = [mo, d];
+    return isoDay(Number(m[3]), mo, d);
+  }
+  m = /^(\d{1,2})(?:st|nd|rd|th|º|°)?\s+(?:de\s+)?(\p{L}{3,})\.?,?\s+(?:de\s+)?(\d{4})$/u.exec(s); // "12 March 1990", "12 marzo 1990", "12 de marzo de 1990"
+  let mi = m ? monthOf(m[2]!) : undefined;
+  if (m && mi) return isoDay(Number(m[3]), mi, Number(m[1]));
+  m = /^(\p{L}{3,})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/u.exec(s); // "March 12, 1990"
+  mi = m ? monthOf(m[1]!) : undefined;
+  if (m && mi) return isoDay(Number(m[3]), mi, Number(m[2]));
+  return undefined;
+}

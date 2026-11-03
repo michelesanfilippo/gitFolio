@@ -18,7 +18,7 @@ export function toYaml(doc: CvDocument): string {
     name: doc.personal.fullName,
     headline: doc.personal.headline,
     locale: doc.locale,
-    contacts: doc.personal.contacts.map((c) => strip({ [c.kind]: c.value, hidden: c.visible ? undefined : true })),
+    contacts: doc.personal.contacts.map((c) => strip({ [c.kind]: c.value, icon: c.icon, hidden: c.visible ? undefined : true })),
     summary: astToMarkdown(doc.profile),
     experience: doc.experience.map((e) => strip({ role: e.role, company: e.company, location: e.location, ...datesOut(e.dates), description: astToMarkdown(e.description) })),
     education: doc.education.map((e) => strip({ degree: e.degree, school: e.school, location: e.location, ...datesOut(e.dates), description: astToMarkdown(e.description) })),
@@ -73,7 +73,7 @@ export function fromYaml(text: string, prev: CvDocument): FromYaml {
     if (!isObj(c)) return [];
     const kind = Object.keys(c).find((k) => CONTACT_SET.has(k));
     if (!kind) return [];
-    return [{ id: keep(prev.personal.contacts, i), kind: kind as ContactItem['kind'], value: str(c[kind]) ?? '', visible: c.hidden !== true }];
+    return [{ id: keep(prev.personal.contacts, i), kind: kind as ContactItem['kind'], value: str(c[kind]) ?? '', visible: c.hidden !== true, icon: str(c.icon) }];
   });
 
   const content = {

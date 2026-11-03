@@ -154,7 +154,7 @@ export function ContentPanel({ base, showText, setShowText, text, onStartOver }:
       {yamlMode ? <YamlEditor doc={doc} onApply={applyYaml} /> : (<>
       <Card id="personal" title="Personal details" subtitle={[doc.personal.fullName, doc.personal.headline].filter(Boolean).join(' · ')} open={ctx.isOpen('personal')} onToggle={ctx.toggle}>
         <PersonalEditor ctx={ctx} />
-        <p className="text-xs text-muted">Your photo is in the <strong className="text-fg">Photo</strong> tab. Email, phone and links are in <strong className="text-fg">Contacts</strong> below.</p>
+        <p className="text-xs text-muted">Your photo is in the <strong className="text-fg">Photo</strong> tab. Email, phone, links and date of birth are in <strong className="text-fg">Contacts</strong> below.</p>
       </Card>
 
       {order.map((id) => {

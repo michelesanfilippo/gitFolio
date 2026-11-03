@@ -76,7 +76,7 @@ export function LinkedInImportButton({ onApply }: { onApply: (update: (doc: CvDo
         </span>
       ) : null}
       <Button variant="secondary" onClick={() => void start()} loading={Boolean(busy)} title="Imports your name, email and photo from LinkedIn" icon={<LinkedInIcon />}
-        className="hover:!border-accent hover:!text-accent-text">Import from LinkedIn</Button>
+        className="hover:!border-accent hover:!text-accent-text">{/* sotto 2xl resta solo "LinkedIn" per far stare la barra su una riga; il nome accessibile resta intero */}<span className="sr-only 2xl:not-sr-only 2xl:mr-[0.3em]">Import from</span>LinkedIn</Button>
     </span>
   );
 }

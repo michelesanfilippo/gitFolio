@@ -1,4 +1,5 @@
-import { CONTACT_KINDS } from '../icons/contact-icons';
+import { isValidIsoDate } from '../content/contacts';
+import { CONTACT_KINDS, validIcon } from '../icons/contact-icons';
 import type { Block, Inline, RichText } from '../richtext/ast';
 import { normalizeUrl } from '../richtext/url';
 import { CUSTOM_PREFIX, newId, type ContactItem, type CvDocument, type DateRange, type Locale } from '../schema/cv';
@@ -104,12 +105,11 @@ export function cleanContent(raw: unknown, fallback: CvDocument): CvDocument {
   const per = isObj(o.personal) ? o.personal : {};
 
   const contacts: ContactItem[] = ids(
-    list(per.contacts, 30).filter(isObj).map((c) => ({
-      id: rid(c.id),
-      kind: (CONTACT_KINDS as string[]).includes(c.kind as string) ? (c.kind as ContactItem['kind']) : 'link',
-      value: str(c.value, 200),
-      visible: c.visible !== false,
-    })),
+    list(per.contacts, 30).filter(isObj).map((c) => {
+      const kind = (CONTACT_KINDS as string[]).includes(c.kind as string) ? (c.kind as ContactItem['kind']) : 'link';
+      const value = str(c.value, 200);
+      return { id: rid(c.id), kind, value: kind === 'birthdate' && !isValidIsoDate(value) ? '' : value, visible: c.visible !== false, icon: validIcon(kind, c.icon) };
+    }),
   );
 
   const custom = ids(

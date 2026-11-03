@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Segmented, Toggle } from '@/components/ui/controls';
+import { contactWarning, isValidIsoDate } from '@/core/content/contacts';
 import { duplicateAt, move, removeAt, update } from '@/core/content/list';
-import { CONTACT_KINDS, CONTACT_LABEL, CONTACT_PLACEHOLDER } from '@/core/icons/contact-icons';
+import { CONTACT_ICON_CHOICES, CONTACT_KINDS, CONTACT_LABEL, CONTACT_PLACEHOLDER, NO_ICON, contactIconId, iconName, iconPrims } from '@/core/icons/contact-icons';
 import type { RichText } from '@/core/richtext/ast';
 import { astToHtml } from '@/core/richtext/to-html';
 import { newId, type ContactKind, type CvDocument } from '@/core/schema/cv';
@@ -10,8 +12,8 @@ import type { DesignSettings } from '@/core/schema/design';
 import { formatMonth } from '@/templates/labels';
 import { RichTextEditor } from '@/features/richtext/rich-text-editor';
 import type { SetDesign } from '../panels';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { AddButton, Card, ContactGlyph, DeleteButton, FieldGrid, IconButton, ItemActions, MonthField, TagsField, TextField, VisibilityButton, inputCls } from './ui';
+import { ArrowDown, ArrowUp, Ban } from 'lucide-react';
+import { AddButton, Card, ContactGlyph, DeleteButton, IconGlyph, FieldGrid, IconButton, ItemActions, MonthField, TagsField, TextField, VisibilityButton, inputCls } from './ui';
 
 export type SetDoc = (fn: (d: CvDocument) => CvDocument) => void;
 
@@ -56,35 +58,87 @@ export function PersonalEditor({ ctx }: { ctx: EditorCtx }) {
 
 /* ----------------------------------------------------------------- contatti */
 
+/** Ordine in cui "Add contact" propone i tipi ancora mancanti. */
+const ADD_ORDER: ContactKind[] = ['email', 'phone', 'location', 'linkedin', 'github', 'website', 'link'];
+const INPUT_MODE: Partial<Record<ContactKind, 'email' | 'tel' | 'url'>> = { email: 'email', phone: 'tel', website: 'url', linkedin: 'url', github: 'url', link: 'url' };
+const AUTOCOMPLETE: Partial<Record<ContactKind, string>> = { email: 'email', phone: 'tel' };
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 export function ContactsEditor({ ctx }: { ctx: EditorCtx }) {
   const { doc, setDoc, design, set } = ctx;
   const contacts = doc.personal.contacts;
   const setContacts = (fn: (c: typeof contacts) => typeof contacts) => setDoc((d) => ({ ...d, personal: { ...d.personal, contacts: fn(d.personal.contacts) } }));
   const style = design.contacts;
+  const [iconFor, setIconFor] = useState<string | null>(null); // contatto con il selettore di icone aperto
+  const [added, setAdded] = useState<string | null>(null);     // ultimo contatto aggiunto: il suo campo prende il focus
+  const nextKind = ADD_ORDER.find((k) => !contacts.some((x) => x.kind === k)) ?? 'link';
   return (
     <>
       <ul className="flex flex-col gap-2.5">
-        {contacts.map((c, i) => (
-          <li key={c.id} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-bg/40 p-2 ${c.visible ? '' : 'opacity-60'}`}>
-            <span className="relative">
-              <ContactGlyph kind={c.kind} className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-accent-text" />
-              <select aria-label="Contact type" value={c.kind} className={`${inputCls} w-[7.4rem] pl-8`}
-                onChange={(e) => setContacts((l) => update(l, c.id, { kind: e.target.value as ContactKind }))}>
-                {CONTACT_KINDS.map((k) => <option key={k} value={k}>{CONTACT_LABEL[k]}</option>)}
-              </select>
-            </span>
-            <input aria-label={`${CONTACT_LABEL[c.kind]} value`} className={`${inputCls} flex-1 basis-40`} value={c.value} maxLength={200} placeholder={CONTACT_PLACEHOLDER[c.kind]}
-              onChange={(e) => setContacts((l) => update(l, c.id, { value: e.target.value }))} />
-            <span className="ml-auto flex items-center">
-            <VisibilityButton noun={CONTACT_LABEL[c.kind].toLowerCase()} visible={c.visible} onToggle={() => setContacts((l) => update(l, c.id, { visible: !c.visible }))} />
-            <IconButton label="Move contact up" disabled={i === 0} onClick={() => setContacts((l) => move(l, i, -1))}><ArrowUp className="size-4" aria-hidden /></IconButton>
-            <IconButton label="Move contact down" disabled={i === contacts.length - 1} onClick={() => setContacts((l) => move(l, i, 1))}><ArrowDown className="size-4" aria-hidden /></IconButton>
-            <DeleteButton label={`Delete ${CONTACT_LABEL[c.kind].toLowerCase()}`} onConfirm={() => setContacts((l) => removeAt(l, i))} />
-            </span>
-          </li>
-        ))}
+        {contacts.map((c, i) => {
+          const label = CONTACT_LABEL[c.kind].toLowerCase();
+          const warning = contactWarning(c);
+          const current = contactIconId(c.kind, c.icon);
+          const pickerOpen = iconFor === c.id;
+          const defaultIcon = CONTACT_ICON_CHOICES[c.kind][0];
+          return (
+            <li key={c.id} className={`flex flex-col gap-1.5 rounded-lg border border-border bg-bg/40 p-2 ${c.visible ? '' : 'opacity-60'}`}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" aria-label={`Change icon for ${label}`} aria-expanded={pickerOpen} aria-controls={`icons-${c.id}`} title="Change icon"
+                  onClick={() => setIconFor(pickerOpen ? null : c.id)}
+                  className={`grid size-9 shrink-0 place-items-center rounded-lg border transition-colors duration-200 active:scale-95 ${pickerOpen ? 'border-accent bg-accent/10 text-accent-text' : 'border-border text-accent-text hover:border-accent/60 hover:bg-accent/10'}`}>
+                  {current === NO_ICON ? <Ban className="size-4 text-muted" aria-hidden /> : <ContactGlyph kind={c.kind} icon={c.icon} />}
+                </button>
+                <select aria-label="Contact type" value={c.kind} className={`${inputCls} w-[8.6rem]`}
+                  onChange={(e) => {
+                    const kind = e.target.value as ContactKind;
+                    // la data di nascita ha un campo suo: passando da/verso quel tipo il vecchio testo non avrebbe senso
+                    const keep = kind === 'birthdate' ? isValidIsoDate(c.value) : c.kind !== 'birthdate';
+                    setContacts((l) => update(l, c.id, { kind, icon: undefined, value: keep ? c.value : '' }));
+                  }}>
+                  {CONTACT_KINDS.map((k) => <option key={k} value={k}>{CONTACT_LABEL[k]}</option>)}
+                </select>
+                {c.kind === 'birthdate' ? (
+                  <input type="date" aria-label={`${CONTACT_LABEL[c.kind]} value`} className={`${inputCls} flex-1 basis-40`} value={c.value} min="1900-01-01" max={todayIso()} autoFocus={c.id === added}
+                    onChange={(e) => setContacts((l) => update(l, c.id, { value: e.target.value }))} />
+                ) : (
+                  <input aria-label={`${CONTACT_LABEL[c.kind]} value`} className={`${inputCls} flex-1 basis-40`} value={c.value} maxLength={200} placeholder={CONTACT_PLACEHOLDER[c.kind]}
+                    inputMode={INPUT_MODE[c.kind]} autoComplete={AUTOCOMPLETE[c.kind] ?? 'off'} spellCheck={false} autoFocus={c.id === added}
+                    aria-invalid={warning ? true : undefined} aria-describedby={warning ? `warn-${c.id}` : undefined}
+                    onChange={(e) => setContacts((l) => update(l, c.id, { value: e.target.value }))} />
+                )}
+                <span className="ml-auto flex items-center">
+                  <VisibilityButton noun={label} visible={c.visible} onToggle={() => setContacts((l) => update(l, c.id, { visible: !c.visible }))} />
+                  <IconButton label="Move contact up" disabled={i === 0} onClick={() => setContacts((l) => move(l, i, -1))}><ArrowUp className="size-4" aria-hidden /></IconButton>
+                  <IconButton label="Move contact down" disabled={i === contacts.length - 1} onClick={() => setContacts((l) => move(l, i, 1))}><ArrowDown className="size-4" aria-hidden /></IconButton>
+                  <DeleteButton label={`Delete ${label}`} onConfirm={() => setContacts((l) => removeAt(l, i))} />
+                </span>
+              </div>
+              {pickerOpen ? (
+                <div id={`icons-${c.id}`} role="group" aria-label={`Icon for ${label}`} className="flex flex-col gap-1.5 rounded-lg bg-bg/60 p-1.5">
+                  <div className="flex flex-wrap items-center gap-1">
+                    {[...CONTACT_ICON_CHOICES[c.kind], NO_ICON].map((id) => (
+                      <button key={id} type="button" aria-label={iconName(id)} aria-pressed={current === id} title={iconName(id)}
+                        onClick={() => setContacts((l) => update(l, c.id, { icon: id === defaultIcon ? undefined : id }))}
+                        className={`grid size-9 place-items-center rounded-lg border transition-colors duration-200 active:scale-95 ${current === id ? 'border-accent bg-accent/15 text-accent-text' : 'border-transparent text-muted hover:bg-border hover:text-fg'}`}>
+                        {id === NO_ICON ? <Ban className="size-4" aria-hidden /> : <IconGlyph prims={iconPrims(id)} />}
+                      </button>
+                    ))}
+                  </div>
+                  {!style.icons ? <p className="px-1 text-xs text-muted">Icons are turned off for the whole CV. Turn them on in the Icons settings below to see your choice.</p> : null}
+                </div>
+              ) : null}
+              {c.kind === 'birthdate' ? <p className="px-1 text-xs text-muted">Optional. Many employers don&apos;t ask for it: add it only if the CV conventions in your country expect one.</p> : null}
+              {warning ? <p id={`warn-${c.id}`} className="px-1 text-xs text-amber-300">{warning}</p> : null}
+            </li>
+          );
+        })}
       </ul>
-      <AddButton label="Add contact" onClick={() => setContacts((l) => [...l, { id: newId(), kind: l.some((x) => x.kind === 'email') ? 'link' : 'email', value: '', visible: true }])} />
+      <AddButton label="Add contact" onClick={() => {
+        const id = newId();
+        setAdded(id);
+        setContacts((l) => [...l, { id, kind: nextKind, value: '', visible: true }]);
+      }} />
 
       <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">Icons</h4>
